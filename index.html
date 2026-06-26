@@ -2,6 +2,11 @@
 <!--
   Kakalove Cafe 咖啡團購共編工具
   ════════════════════════════════
+  v1.0.2  2026-06-26
+    - 新增手機專用頁面
+    - 底部購物車列（Cart Bar）與抽屜式送出（Drawer）
+    - 支援 iOS Safe Area、防溢出與版面全面優化
+
   v1.0.1  2026-06-26
     - 移除下單頁版本紀錄卡片
     - 新增開頁警告彈出視窗
@@ -21,7 +26,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kakalove Cafe 咖啡團購共編</title>
 <style>
   :root {
@@ -46,7 +51,7 @@
     --r4: #6b2f0f; --r4t: #fff;     /* 深    */
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI','微軟正黑體',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  body{font-family:'Segoe UI','微軟正黑體',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   header{background:var(--brown-dark);color:#fff;padding:20px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
   header .logo{font-size:28px}
@@ -247,6 +252,145 @@
   #tickerWindow{height:140px;overflow:hidden;position:relative;}
   #tickerItems{display:flex;flex-direction:column;gap:6px;will-change:transform;}
   .ticker-item{font-size:10px;color:var(--text-muted);line-height:1.55;overflow-wrap:break-word;}
+
+  /* ═══════════════════════════════════════
+     MOBILE  (iOS optimised)
+  ════════════════════════════════════════ */
+  @media(max-width:720px){
+    /* 固定頂部區域，防止水平溢出 */
+    html,body{width:100%;overflow-x:hidden;}
+    #stickyTop{position:sticky;top:0;z-index:100;}
+    .tab-panel{overflow-x:hidden;}
+    /* disclaimer <p> 在 flex 容器內需 min-width:0 才不會撐寬父層 */
+    .disclaimer-banner p{min-width:0;flex:1;}
+    /* 彙整表格超出寬度修正 */
+    .summary-table{table-layout:fixed;word-break:break-word;}
+
+    header{padding:10px 14px;gap:10px;}
+    header .logo{font-size:20px;}
+    header h1{font-size:14px;letter-spacing:.2px;}
+    header p{font-size:10px;}
+
+    /* 分頁列：4 個 tab 平均分配寬度，不需水平捲動 */
+    .tabs{padding:0;overflow-x:hidden;flex-wrap:nowrap;}
+    .tab-btn{flex:1;min-width:0;padding:10px 4px;font-size:11px;white-space:nowrap;}
+
+    .disclaimer-banner{padding:6px 12px!important;font-size:11px!important;}
+    .disclaimer-banner a{word-break:break-all;}
+
+    /* order tab 底部留空間給購物車列 */
+    #tab-order .container{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+
+    .order-grid{grid-template-columns:1fr!important;}
+    #desktopCartCol{display:none!important;}
+
+    /* 品項列表固定高度，內部捲動 */
+    .product-list{max-height:calc(100dvh - 380px);overflow-y:auto;}
+    /* 品項改為兩行：第一行顯示名稱，第二行顯示價格＋數量控制 */
+    .product-item{flex-wrap:wrap;align-items:flex-start;min-width:0;}
+    .product-info{overflow:hidden;min-width:0;}
+    .pi-name{word-break:break-word;}
+    .product-right{
+      flex-basis:100%;
+      flex-direction:row;
+      justify-content:space-between;
+      align-items:center;
+      padding-top:4px;
+    }
+
+    /* 防止 iOS Safari 自動縮放 */
+    input[type=text],input[type=number],select,textarea{font-size:16px!important;}
+
+    /* 管理員編輯 modal 單欄 */
+    .pe-grid{grid-template-columns:1fr!important;}
+    /* 彙整頁彙總格線單欄 */
+    .agg-grid{grid-template-columns:1fr;}
+
+    /* ── Cart Bar ── */
+    .cart-bar{
+      display:flex;
+      position:fixed;
+      bottom:0;left:0;right:0;
+      background:var(--brown-dark);
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      z-index:140;
+      align-items:center;gap:12px;
+      cursor:pointer;
+      box-shadow:0 -2px 10px rgba(0,0,0,.25);
+    }
+    .cart-bar-info{flex:1;}
+    .cart-bar-count{font-size:11px;color:rgba(255,255,255,.65);}
+    .cart-bar-total{font-size:16px;font-weight:800;color:var(--accent);}
+    .cart-bar-btn{
+      background:var(--accent);color:var(--brown-dark);
+      border:none;border-radius:8px;
+      padding:8px 14px;font-size:13px;font-weight:700;
+      cursor:pointer;white-space:nowrap;flex-shrink:0;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    /* ── Cart Drawer ── */
+    .cart-drawer-overlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.5);
+      z-index:160;opacity:0;pointer-events:none;
+      transition:opacity .25s;
+    }
+    .cart-drawer-overlay.open{opacity:1;pointer-events:all;}
+
+    .cart-drawer{
+      position:fixed;bottom:0;left:0;right:0;
+      background:#fff;border-radius:20px 20px 0 0;
+      z-index:161;
+      transform:translateY(100%);
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      max-height:88vh;
+      display:flex;flex-direction:column;
+      box-shadow:0 -4px 24px rgba(0,0,0,.2);
+    }
+    .cart-drawer.open{transform:translateY(0);}
+
+    .cd-handle{
+      width:36px;height:4px;background:var(--border);
+      border-radius:2px;margin:12px auto 0;flex-shrink:0;
+    }
+    .cd-header{
+      padding:10px 16px 12px;
+      display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--border);flex-shrink:0;
+    }
+    .cd-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px;flex:1;}
+    .cd-footer{
+      padding:12px 16px;flex-shrink:0;
+      border-top:2px solid var(--border);
+      padding-bottom:calc(env(safe-area-inset-bottom) + 12px);
+    }
+
+    /* ── Toast：出現在畫面頂部 ── */
+    #toast{
+      bottom:auto;
+      top:calc(env(safe-area-inset-top) + 68px);
+      left:50%;right:auto;
+      transform:translateX(-50%);
+      white-space:nowrap;
+      max-width:calc(100vw - 32px);
+    }
+
+    /* ── Modals：一般 modal 從底部滑出；警告視窗保持置中 ── */
+    .modal-overlay:not(#warningModal){align-items:flex-end;padding:0;}
+    .modal-overlay:not(#warningModal) .modal{
+      border-radius:20px 20px 0 0;
+      max-height:92vh;
+      width:100%;max-width:100%!important;
+      padding:20px 16px calc(env(safe-area-inset-bottom) + 20px);
+    }
+  }
+
+  /* 桌機版隱藏手機專用元素 */
+  @media(min-width:721px){
+    .cart-bar,.cart-drawer-overlay,.cart-drawer{display:none!important;}
+  }
+  .cart-bar.hidden{display:none!important;}
 </style>
 <!-- Firebase SDK (compat v9) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -254,6 +398,7 @@
 </head>
 <body>
 
+<div id="stickyTop">
 <header>
   <div class="logo">☕</div>
   <div style="flex:1;">
@@ -262,7 +407,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:right;">
-      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.1</div>
+      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.2</div>
       <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-06-26</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);">
@@ -279,7 +424,7 @@
   <button class="tab-btn" onclick="switchTab('admin',this)">⚙️ 管理員</button>
 </div>
 
-<div style="background:#7b4f2e;border-bottom:1px solid rgba(0,0,0,.15);padding:8px 20px;display:flex;align-items:center;gap:8px;">
+<div class="disclaimer-banner" style="background:#7b4f2e;border-bottom:1px solid rgba(0,0,0,.15);padding:8px 20px;display:flex;align-items:center;gap:8px;">
   <span style="font-size:14px;flex-shrink:0;">⚠️</span>
   <p style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.5;margin:0;">
     本工具品項資料由自動同步產生，<strong style="color:#fff;">品名、規格、價格等資訊僅供參考，實際內容以
@@ -287,6 +432,7 @@
        style="color:#e8a87c;text-decoration:underline;">Kakalove 官網</a> 為準。</strong>
     下單前請自行確認。
   </p>
+</div>
 </div>
 
 <!-- ══ TAB 1 · ORDER ══ -->
@@ -310,7 +456,7 @@
       </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:16px;">
+    <div id="desktopCartCol" style="display:flex;flex-direction:column;gap:16px;">
       <div class="card">
         <div class="card-header"><h2>👤 訂購人資訊</h2></div>
         <div class="card-body">
@@ -632,6 +778,38 @@
 <div class="lightbox" id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src=""></div>
 <div id="toast"></div>
 
+<!-- ══ MOBILE · CART BAR ══ -->
+<div class="cart-bar" id="cartBar" onclick="openCartDrawer()">
+  <div class="cart-bar-info">
+    <div class="cart-bar-count" id="cartBarCount">0 項商品</div>
+    <div class="cart-bar-total" id="cartBarTotal">NT$0</div>
+  </div>
+  <button class="cart-bar-btn">查看購物車 →</button>
+</div>
+
+<!-- ══ MOBILE · CART DRAWER ══ -->
+<div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="closeCartDrawer()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cd-handle"></div>
+  <div class="cd-header">
+    <span id="cartDrawerTitle" style="font-size:15px;font-weight:700;color:var(--brown-dark);">🛒 我的選單</span>
+    <button style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);line-height:1;-webkit-tap-highlight-color:transparent;" onclick="closeCartDrawer()">✕</button>
+  </div>
+  <div class="cd-body">
+    <div class="form-row" style="margin-bottom:14px;">
+      <label>你的名字</label>
+      <input type="text" id="buyerNameDrawer" placeholder="輸入名字…" oninput="syncBuyerName('drawer')">
+    </div>
+    <div id="cartItemsDrawer"><div class="cart-empty">尚未選擇品項</div></div>
+    <div id="cartTotalRowDrawer" style="display:none;" class="cart-total">
+      <span>合計</span><span id="cartTotalDrawer">NT$0</span>
+    </div>
+  </div>
+  <div class="cd-footer">
+    <button class="btn btn-primary btn-full" onclick="submitOrder()">✅ 送出我的訂單</button>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════
 // ROAST LEVELS  (index 0 = 淺 … 4 = 深)
@@ -660,6 +838,11 @@ function normalizeRoast(r){
 const ROAST_CLASS = ['r0','r1','r2','r3','r4'];
 
 const CHANGELOG = [
+  { version:'v1.0.2', date:'2026-06-26', items:[
+    '新增手機專用頁面',
+    '底部購物車列（Cart Bar）與抽屜式送出（Drawer）',
+    '支援 iOS Safe Area、防溢出與版面全面優化'
+  ]},
   { version:'v1.0.1', date:'2026-06-26', items:[
     '移除下單頁版本紀錄卡片',
     '新增開頁警告彈出視窗',
@@ -1058,6 +1241,8 @@ function switchTab(tab, btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(btn) btn.classList.add('active');
+  const cartBar = document.getElementById('cartBar');
+  if(cartBar) cartBar.classList.toggle('hidden', tab !== 'order');
   if(tab==='summary') renderSummary();
   if(tab==='history') renderHistory();
   if(tab==='admin') renderAdminProducts();
@@ -1094,12 +1279,12 @@ function renderProducts(){
   let products = PRODUCTS;
   if(activeCategory !== '全部') products = products.filter(p => p.cat === activeCategory);
   if(q) products = products.filter(p =>
-    p.name_zh.toLowerCase().includes(q) ||
-    p.name_en.toLowerCase().includes(q) ||
-    p.flavors.join('').includes(q) ||
-    p.desc.includes(q) ||
-    p.process.includes(q) ||
-    p.roast.includes(q)
+    (p.name_zh||'').toLowerCase().includes(q) ||
+    (p.name_en||'').toLowerCase().includes(q) ||
+    (p.flavors||[]).join('').includes(q) ||
+    (p.desc||'').includes(q) ||
+    (p.process||'').includes(q) ||
+    (p.roast||'').includes(q)
   );
 
   if(!products.length){ list.innerHTML='<div class="cart-empty">找不到符合的品項</div>'; return; }
@@ -1122,7 +1307,7 @@ function renderProducts(){
     html += groups[cat].map(p=>{
       const qty = cart[p.id] || 0;
       const rc = roastClass(p.roast);
-      const flavorHtml = p.flavors.slice(0,3).map(f=>`<span class="flavor-chip">${f}</span>`).join('');
+      const flavorHtml = (p.flavors||[]).slice(0,3).map(f=>`<span class="flavor-chip">${f}</span>`).join('');
       return `<div class="product-item ${qty>0?'selected':''}" id="pi-${p.id}">
         <div class="product-emoji">${p.emoji}</div>
         <div class="product-info">
@@ -1207,19 +1392,35 @@ function addFromDetail(){
 function updateCartHeader(){
   const n = document.getElementById('buyerName').value.trim();
   document.getElementById('cartTitle').textContent = n ? `🛒 ${n} 的選單` : '🛒 我的選單';
+  const dt = document.getElementById('cartDrawerTitle');
+  const dn = document.getElementById('buyerNameDrawer');
+  if(dt) dt.textContent = n ? `🛒 ${n} 的選單` : '🛒 我的選單';
+  if(dn && dn.value !== n) dn.value = n;
 }
 
 function renderCart(){
   const el = document.getElementById('cartItems');
   const totalEl = document.getElementById('cartTotal');
   const totalRow = document.getElementById('cartTotalRow');
+  const cartBar = document.getElementById('cartBar');
+  const drawerEl = document.getElementById('cartItemsDrawer');
+  const drawerTotal = document.getElementById('cartTotalDrawer');
+  const drawerTotalRow = document.getElementById('cartTotalRowDrawer');
   const items = Object.entries(cart);
   if(!items.length){
     el.innerHTML='<div class="cart-empty">選擇左側品項加入清單</div>';
-    totalRow.style.display='none'; return;
+    totalRow.style.display='none';
+    if(cartBar){
+      document.getElementById('cartBarCount').textContent='0 項商品';
+      document.getElementById('cartBarTotal').textContent='NT$0';
+    }
+    if(drawerEl) drawerEl.innerHTML='<div class="cart-empty">尚未選擇品項</div>';
+    if(drawerTotalRow) drawerTotalRow.style.display='none';
+    closeCartDrawer();
+    return;
   }
   let total=0;
-  el.innerHTML = items.map(([id,qty])=>{
+  const cartHtml = items.map(([id,qty])=>{
     const p=PRODUCTS.find(x=>x.id===id); if(!p) return '';
     const sub=p.price*qty; total+=sub;
     return `<div class="cart-item">
@@ -1228,14 +1429,27 @@ function renderCart(){
       <button class="ci-remove" onclick="removeItem('${id}')">✕</button>
     </div>`;
   }).join('');
+  el.innerHTML = cartHtml;
   totalEl.textContent=`NT$${total.toLocaleString()}`;
   totalRow.style.display='flex';
+  if(cartBar){
+    const count = items.reduce((s,[,q])=>s+q,0);
+    document.getElementById('cartBarCount').textContent=`${count} 項商品`;
+    document.getElementById('cartBarTotal').textContent=`NT$${total.toLocaleString()}`;
+  }
+  if(drawerEl){
+    drawerEl.innerHTML = cartHtml;
+    if(drawerTotal) drawerTotal.textContent=`NT$${total.toLocaleString()}`;
+    if(drawerTotalRow) drawerTotalRow.style.display='flex';
+  }
 }
 
 function removeItem(id){ delete cart[id]; renderProducts(); renderCart(); }
 function clearCart(){ cart={}; renderProducts(); renderCart(); }
 
 function submitOrder(){
+  const dn = document.getElementById('buyerNameDrawer');
+  if(dn && dn.value.trim()) document.getElementById('buyerName').value = dn.value.trim();
   const name = document.getElementById('buyerName').value.trim();
   if(!name){ toast('請先輸入你的名字！'); return; }
   if(!Object.keys(cart).length){ toast('請至少選擇一個品項！'); return; }
@@ -1252,7 +1466,9 @@ function submitOrder(){
     .then(()=>toast(`✅ ${name} 的訂單${isUpdate?'已更新':'已送出'}！`))
     .catch(err=>toast('❌ 送出失敗：'+err.message));
   clearCart();
-  document.getElementById('buyerName').value=''; updateCartHeader();
+  document.getElementById('buyerName').value='';
+  if(dn) dn.value='';
+  updateCartHeader();
 }
 
 // ════════════════════════════════════════
@@ -1864,6 +2080,34 @@ document.querySelectorAll('.modal-overlay:not([data-no-dismiss])').forEach(m=>m.
 let toastTimer;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2800); }
 function updateRoundLabel(){ const l=`第 ${state.round} 輪`; document.getElementById('round-label').textContent=l; document.getElementById('summary-round-label').textContent=l; }
+
+// ════════════════════════════════════════
+// MOBILE CART DRAWER
+// ════════════════════════════════════════
+function openCartDrawer(){
+  const d=document.getElementById('cartDrawer');
+  const o=document.getElementById('cartDrawerOverlay');
+  if(d) d.classList.add('open');
+  if(o) o.classList.add('open');
+  // 如果桌機有填名字，同步到 drawer
+  const desk=document.getElementById('buyerName');
+  const dn=document.getElementById('buyerNameDrawer');
+  if(dn && desk && !dn.value && desk.value) dn.value=desk.value;
+}
+function closeCartDrawer(){
+  const d=document.getElementById('cartDrawer');
+  const o=document.getElementById('cartDrawerOverlay');
+  if(d) d.classList.remove('open');
+  if(o) o.classList.remove('open');
+}
+function syncBuyerName(from){
+  const desk=document.getElementById('buyerName');
+  const drawer=document.getElementById('buyerNameDrawer');
+  if(!desk||!drawer) return;
+  if(from==='drawer') desk.value=drawer.value;
+  else drawer.value=desk.value;
+  updateCartHeader();
+}
 
 initCatalog();
 initVersionTicker();
