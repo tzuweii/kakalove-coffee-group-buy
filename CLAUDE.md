@@ -168,10 +168,24 @@ Worker 抓取時自動帶入 `cat` 欄位，確保同步後品項直接出現在
 
 ## 版本紀錄
 
-| 版本 | 日期 | 說明 |
-|---|---|---|
-| v1.0.1 | 2026-06-26 | UI 更新（見下方詳細） |
-| v1.0.0 | 2026-06-24 | First Release（見下方詳細） |
+| 版本 | 檔案 | 日期 | 說明 |
+|---|---|---|---|
+| v1.0.2 | index_ios.html | 2026-06-26 | 手機版優化（見下方詳細） |
+| v1.0.1 | index.html | 2026-06-26 | UI 更新（見下方詳細） |
+| v1.0.0 | index.html | 2026-06-24 | First Release（見下方詳細） |
+
+### v1.0.2 — 2026-06-26 · 手機版優化（index_ios.html）
+
+- 新增 `index_ios.html`：以 `index.html` v1.0.1 為基礎的手機專用版本
+- 購物車浮動列（Cart Bar）：選品後從畫面底部滑出，顯示品項數量與總金額
+- 購物車抽屜（Drawer）：點擊 Cart Bar 從底部展開，含名字輸入、品項明細、送出按鈕
+- 購物車名字雙向同步：桌機欄位 ↔ 抽屜欄位互相同步（`syncBuyerName`）
+- Modal 改為 bottom sheet（底部滑出）；開頁警告視窗保持畫面置中
+- 分頁列（tabs）縮小字體、支援水平捲動，防止小螢幕溢出
+- 修正手機水平溢出（`html,body { overflow-x:hidden }`）與 Header 白邊問題
+- `viewport-fit=cover` 支援 iPhone 瀏海 / Dynamic Island 的 safe area
+- 輸入框字體強制 16px，防止 iOS Safari 自動縮放
+- 管理員品項編輯 Modal 改為單欄，適合手機操作
 
 ### v1.0.1 — 2026-06-26 · UI 更新
 
