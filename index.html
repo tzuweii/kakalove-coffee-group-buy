@@ -257,10 +257,16 @@
      MOBILE  (iOS optimised)
   ════════════════════════════════════════ */
   @media(max-width:720px){
-    /* 固定頂部區域，防止水平溢出 */
-    html,body{width:100%;overflow-x:hidden;}
+    /* ── 根源修正：整個文件不允許水平溢出 ── */
+    html{max-width:100vw;overflow-x:hidden;}
+    body{max-width:100vw;overflow-x:hidden;width:100%;}
+    *{box-sizing:border-box;}
+
     #stickyTop{position:sticky;top:0;z-index:100;}
-    .tab-panel{overflow-x:hidden;}
+    .tab-panel{overflow-x:hidden;max-width:100vw;}
+    .container{padding:12px;max-width:100%;overflow-x:hidden;}
+    .card{width:100%;max-width:100%;overflow:hidden;}
+
     /* disclaimer <p> 在 flex 容器內需 min-width:0 才不會撐寬父層 */
     .disclaimer-banner p{min-width:0;flex:1;}
     /* 彙整表格超出寬度修正 */
@@ -281,15 +287,21 @@
     /* order tab 底部留空間給購物車列 */
     #tab-order .container{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 
-    .order-grid{grid-template-columns:1fr!important;}
+    .order-grid{grid-template-columns:1fr!important;width:100%;}
+    /* grid item 預設 min-width:auto 不會收縮，必須設 0 才不會被內容撐破 */
+    .order-grid > *{min-width:0;max-width:100%;overflow:hidden;}
     #desktopCartCol{display:none!important;}
 
-    /* 品項列表固定高度，內部捲動 */
-    .product-list{max-height:calc(100dvh - 380px);overflow-y:auto;}
-    /* 品項改為兩行：第一行顯示名稱，第二行顯示價格＋數量控制 */
-    .product-item{flex-wrap:wrap;align-items:flex-start;min-width:0;}
-    .product-info{overflow:hidden;min-width:0;}
-    .pi-name{word-break:break-word;}
+    /* 品項列表 */
+    .product-list{max-height:calc(100dvh - 380px);overflow-y:auto;overflow-x:hidden;width:100%;}
+    /* 品項卡片：嚴格限制在父容器內 */
+    .product-item{flex-wrap:wrap;align-items:flex-start;width:100%;min-width:0;max-width:100%;}
+    .product-emoji{flex-shrink:0;}
+    .product-info{min-width:0;flex:1;overflow:hidden;max-width:calc(100% - 62px);}
+    .pi-top{flex-wrap:wrap;}
+    .pi-name{word-break:break-word;overflow-wrap:anywhere;white-space:normal;}
+    .pi-en{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+    .pi-bottom{flex-wrap:wrap;}
     .product-right{
       flex-basis:100%;
       flex-direction:row;
@@ -297,6 +309,8 @@
       align-items:center;
       padding-top:4px;
     }
+    .cat-header{max-width:100%;}
+    .filter-chips{flex-wrap:wrap;}
 
     /* 防止 iOS Safari 自動縮放 */
     input[type=text],input[type=number],select,textarea{font-size:16px!important;}

@@ -151,6 +151,32 @@ Worker 抓取時自動帶入 `cat` 欄位，確保同步後品項直接出現在
 
 > **設計決策**：不用產地或處理法當 emoji，因為同分類的品項會全部顯示相同 emoji（例如同一產區全排 🌍，或水洗處理法全排 💧），版面單調。hash 確保同品項穩定、不同品項多樣。
 
+
+## 手機版 CSS 已知問題與修正紀錄
+
+### CSS Grid item 水平溢出
+
+**症狀**：手機版非配方豆分類的品項卡片右側被截斷，「第N輪」按鈕位置跑掉。配方豆正常是因為品名較短。
+
+**診斷方式**：在 Console 執行以下指令，找出所有超出螢幕的元素：
+```javascript
+[...document.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > window.innerWidth + 1).map(el => el.className || el.tagName).slice(0, 20)
+```
+
+結果顯示從最外層無 class 的 `DIV`（寬 519）到 `product-item` 全部超出，視窗寬僅 390。
+
+**根本原因**：CSS Grid item 預設 `min-width: auto`，當內容（長品名）比欄寬大時，item 不會收縮反而被撐破，連帶把整個 grid 撐寬。`overflow-x: hidden` 只隱藏捲軸，DOM 寬度仍然超出。
+
+**修正**（加在手機 media query 內）：
+```css
+html { max-width: 100vw; overflow-x: hidden; }
+body { max-width: 100vw; overflow-x: hidden; width: 100%; }
+* { box-sizing: border-box; }
+.order-grid > * { min-width: 0; max-width: 100%; overflow: hidden; }
+```
+
+> **重要**：對品名（`.pi-name`）或卡片（`.card`）本身加 `word-break` / `overflow:hidden` 無效，必須從 grid item 層（`.order-grid > *`）加 `min-width:0` 才能解決。
+
 ## 部署流程
 
 ### index.html
