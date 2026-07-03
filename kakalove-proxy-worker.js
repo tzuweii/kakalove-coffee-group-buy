@@ -83,8 +83,11 @@ function parseProductsFromHtml(html, cat) {
 // ── 單品頁解析 ────────────────────────────────────────────────────────────────
 
 function parseDetailFromHtml(html) {
-  // 先把 HTML tag 全拿掉，只留純文字（保留換行）
+  // 先移除 <script> / <style> 區塊，避免嵌入 JSON 被誤判
+  // 再把 HTML tag 全拿掉，只留純文字（保留換行）
   const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
