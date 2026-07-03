@@ -2072,7 +2072,7 @@ function openProductEditFromSync(idx){
   document.getElementById('peNameEn').value=sp.title;
   document.getElementById('peCat').value=sp.cat||'非洲';
   document.getElementById('peProcess').value=sp.process||'';
-  document.getElementById('peRoast').value=sp.roast||'淺焙';
+  document.getElementById('peRoast').value=normalizeRoast(sp.roast)||'淺焙';
   document.getElementById('pePrice').value=parseInt(sp.variants?.[0]?.price||0);
   document.getElementById('peEmoji').value=guessEmoji(sp.title, sp.cat, sp.flavors);
   document.getElementById('peTags').value='';
