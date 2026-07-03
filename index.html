@@ -1948,6 +1948,7 @@ async function runSync(){
               ${sp.flavors?.length ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">
                 ${sp.flavors.map(f=>`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text-muted);">${f}</span>`).join('')}
               </div>` : ''}
+              ${sp.desc ? `<div style="margin-top:4px;font-size:11px;color:var(--text-muted);line-height:1.5;">${sp.desc}</div>` : ''}
             </div>
             <button class="btn btn-outline btn-sm" onclick="openProductEditFromSync(${i})">編輯後新增</button>
           </div>`).join('')}
