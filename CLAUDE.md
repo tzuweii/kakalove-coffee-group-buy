@@ -196,9 +196,23 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 
 | 版本 | 檔案 | 日期 | 說明 |
 |---|---|---|---|
+| v1.0.3 | index.html + Worker | 2026-07-04 | 品項同步 bug fix（見下方詳細） |
 | v1.0.2 | index_ios.html | 2026-06-26 | 手機版優化（見下方詳細） |
 | v1.0.1 | index.html | 2026-06-26 | UI 更新（見下方詳細） |
 | v1.0.0 | index.html | 2026-06-24 | First Release（見下方詳細） |
+
+### v1.0.3 — 2026-07-04 · 品項同步 bug fix
+
+#### Worker（`kakalove-proxy`）
+
+- **修正促銷頁面污染問題**：Shopline 將促銷商品資訊（`title_translations`）嵌入 `<script>` 標籤，其中含有 `主風味:`、`烘焙度:` 等欄位標籤，導致 Worker 將促銷商品標題誤判為咖啡豆的風味 / 烘焙度。
+  - 初始嘗試：用 regex 移除 `<script>` 標籤，但失效原因是 Shopline 的大型 script 內容本身含有字面 `</script>` 字串，非貪婪 regex 會在第一個出現位置提前停止，無法完整刪除。
+  - 最終解法（`parseDetailFromHtml`）：改為**只截取**商品描述區塊（`START SHOPLINE RICH CONTENT` → `ProductDetail-shipping-payment`），完全忽略頁面其餘所有內容（scripts、促銷區塊、送貨付款等）。此策略不依賴移除特定污染源，對頁面結構變動有最高容忍度。
+
+#### index.html
+
+- **修正「編輯後新增」烘焙度空值**：`openProductEditFromSync` 直接將 Worker 回傳的 `sp.roast`（例如 `"淺烘焙"`）設進 `<select>` value，但 select 選項只有 `"淺焙"`，Chrome 找不到對應 option 時靜默設為 `""`，存入 Firestore 即為空字串。修正方式：在設值前加 `normalizeRoast(sp.roast)`，與 `bulkAddFromSync` 路徑一致。
+- **同步清單新增簡介（desc）顯示**：同步 modal 的品項卡片現在在風味 chips 下方顯示 `desc` 欄位，方便確認抓取內容是否正確再決定是否新增。
 
 ### v1.0.2 — 2026-06-26 · 手機版優化（index_ios.html）
 

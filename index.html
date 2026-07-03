@@ -2,6 +2,11 @@
 <!--
   Kakalove Cafe 咖啡團購共編工具
   ════════════════════════════════
+  v1.0.3  2026-07-04
+    - 修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤
+    - 修正「編輯後新增」烘焙度欄位未正規化導致儲存空值
+    - 同步清單新增簡介（desc）顯示
+
   v1.0.2  2026-06-26
     - 新增手機專用頁面
     - 底部購物車列（Cart Bar）與抽屜式送出（Drawer）
@@ -421,8 +426,8 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:right;">
-      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.2</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-06-26</div>
+      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.3</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-07-04</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);">
       <div id="connDot" style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;transition:background .4s;flex-shrink:0;"></div>
@@ -852,6 +857,11 @@ function normalizeRoast(r){
 const ROAST_CLASS = ['r0','r1','r2','r3','r4'];
 
 const CHANGELOG = [
+  { version:'v1.0.3', date:'2026-07-04', items:[
+    '修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤',
+    '修正「編輯後新增」烘焙度欄位未正規化導致儲存空值',
+    '同步清單新增簡介顯示'
+  ]},
   { version:'v1.0.2', date:'2026-06-26', items:[
     '新增手機專用頁面',
     '底部購物車列（Cart Bar）與抽屜式送出（Drawer）',
