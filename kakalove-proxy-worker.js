@@ -83,6 +83,10 @@ function parseProductsFromHtml(html, cat) {
 // ── 單品頁解析 ────────────────────────────────────────────────────────────────
 
 function parseDetailFromHtml(html) {
+  // 移除加購促銷區塊（純 HTML 文字節點，其商品標題含「主風味」「烘焙度」等關鍵字）
+  const addonIdx = html.indexOf('id="addon-item"');
+  if (addonIdx !== -1) html = html.slice(0, html.lastIndexOf('<', addonIdx));
+
   // 先移除 <script> / <style> 區塊，避免嵌入 JSON 被誤判
   // 再把 HTML tag 全拿掉，只留純文字（保留換行）
   const text = html
