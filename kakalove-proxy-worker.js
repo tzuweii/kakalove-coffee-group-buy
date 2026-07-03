@@ -83,15 +83,27 @@ function parseProductsFromHtml(html, cat) {
 // ── 單品頁解析 ────────────────────────────────────────────────────────────────
 
 function parseDetailFromHtml(html) {
-  // 移除加購促銷區塊（純 HTML 文字節點，其商品標題含「主風味」「烘焙度」等關鍵字）
-  const addonIdx = html.indexOf('id="addon-item"');
-  if (addonIdx !== -1) html = html.slice(0, html.lastIndexOf('<', addonIdx));
+  // 只取商品描述區塊，完全不解析頁面其他部分（scripts、促銷、送貨等）
+  // 起點：START SHOPLINE RICH CONTENT（Shopline 商品描述固定標記）
+  // 終點：ProductDetail-shipping-payment（送貨付款區塊開始）
+  // 此策略不依賴移除特定汙染源，對頁面結構變動有最高容忍度
+  const richStart = html.indexOf('START SHOPLINE RICH CONTENT');
+  const shippingStart = html.indexOf('ProductDetail-shipping-payment');
+  if (richStart !== -1) {
+    html = html.slice(richStart, shippingStart !== -1 ? shippingStart : richStart + 30000);
+  } else {
+    // fallback：改找描述區塊 class
+    const descStart = html.indexOf('ProductDetail-description-content');
+    if (descStart !== -1) {
+      html = html.slice(descStart, shippingStart !== -1 ? shippingStart : descStart + 30000);
+    }
+    // 兩者皆找不到則用完整 html（最後防線）
+  }
 
-  // 先移除 <script> / <style> 區塊，避免嵌入 JSON 被誤判
-  // 再把 HTML tag 全拿掉，只留純文字（保留換行）
+  // 把 HTML tag 全拿掉，只留純文字（保留換行）
   const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
