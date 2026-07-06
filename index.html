@@ -1800,6 +1800,26 @@ function deleteProduct(id){
     .catch(err=>toast('❌ 刪除失敗：'+err.message));
 }
 
+function deleteProductFromSync(id, btnEl){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!confirm(`確定要從目錄刪除「${p?.name_zh}」？`)) return;
+  db.collection('products').doc(id).delete()
+    .then(()=>{
+      toast('已刪除品項');
+      btnEl.closest('.sync-item')?.remove();
+      const box = document.getElementById('removedListBox');
+      const remaining = box?.querySelectorAll('.sync-item').length || 0;
+      if(remaining === 0){
+        box?.insertAdjacentHTML('afterend', '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>');
+        box?.remove();
+      } else {
+        const header = document.getElementById('removedListHeader');
+        if(header) header.textContent = `⚠️ 以下 ${remaining} 個品項在官網查無，可能已下架`;
+      }
+    })
+    .catch(err=>toast('❌ 刪除失敗：'+err.message));
+}
+
 // ── Sync tab 切換 ─────────────────────────────────────
 function switchSyncTab(tab){
   const isAuto = tab === 'auto';
@@ -1879,13 +1899,15 @@ function runPasteSync(){
   }
 
   if(removedList.length){
-    html += `<div>
-      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+    html += `<div id="removedListBox">
+      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+      <div id="removedListItems">
       ${removedList.map(p => `
         <div class="sync-item">
           <div style="flex:1;font-size:13px;">${p.name_zh}</div>
-          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">刪除</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProductFromSync('${p.id}', this)">刪除</button>
         </div>`).join('')}
+      </div>
     </div>`;
   } else {
     html += '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>';
@@ -1967,13 +1989,15 @@ async function runSync(){
       html+='<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">✅ 目前沒有發現新品項</div>';
     }
     if(removedList.length){
-      html+=`<div>
-        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+      html+=`<div id="removedListBox">
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+        <div id="removedListItems">
         ${removedList.map(p=>`
           <div class="sync-item">
             <div style="flex:1;font-size:13px;">${p.name_zh}</div>
-            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">刪除</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteProductFromSync('${p.id}', this)">刪除</button>
           </div>`).join('')}
+        </div>
       </div>`;
     } else {
       html+='<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>';
