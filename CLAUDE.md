@@ -35,7 +35,8 @@ products/{id}        → 品項資料（首次載入自動從 DEFAULT_PRODUCTS �
 
 ### Firestore 安全規則
 
-目前設為測試模式（allow read, write: if true），適合私人群組使用。
+目前設為永久開放模式（`allow read, write: if true`，無到期日），適合私人群組使用。
+（原為帶 30 天到期日的測試模式，到期後曾導致全站癱瘓，2026-07-29 改為無到期日，詳見「已知限制」。）
 
 ## 主要功能
 
@@ -250,5 +251,6 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 - 收據圖片超過 700KB 會被擋，需先壓縮
 - 同步後的品項 `tags`、`body_html`、`flavors`、`desc` 均為空，需手動在管理員介面補齊
 - 管理員分頁無身份驗證，任何拿到網址的人都能編輯品項
-- Firestore 安全規則為測試模式（allow read, write: if true），適合私人群組，不適合公開使用
+- Firestore 安全規則為永久開放模式（`allow read, write: if true`，無到期日），適合私人群組，不適合公開使用。
+  - **歷史注意**：原本以測試模式建立，規則帶 30 天到期日，2026-07-26 到期後 Firestore 拒絕所有讀寫、全站癱瘓。2026-07-29 於 Firebase Console 改為 `if true`（不帶到期日）修復，日後不會再自動過期。
 - 已手動一鍵新增的品項若 `cat` 填錯，需手動修正（不會自動重新同步覆蓋）
