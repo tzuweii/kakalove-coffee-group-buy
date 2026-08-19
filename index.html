@@ -2,6 +2,10 @@
 <!--
   Kakalove Cafe 咖啡團購共編工具
   ════════════════════════════════
+  v1.0.4  2026-08-19
+    - 修正商品詳情磅數固定顯示 0.25磅，改依品名 / URL 判斷實際規格
+    - 修正結單以輪次為文件 ID 導致重複結單覆蓋歷史紀錄
+
   v1.0.3  2026-07-04
     - 修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤
     - 修正「編輯後新增」烘焙度欄位未正規化導致儲存空值
@@ -426,8 +430,8 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:right;">
-      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.3</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-07-04</div>
+      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.4</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-08-19</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);">
       <div id="connDot" style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;transition:background .4s;flex-shrink:0;"></div>
@@ -857,6 +861,10 @@ function normalizeRoast(r){
 const ROAST_CLASS = ['r0','r1','r2','r3','r4'];
 
 const CHANGELOG = [
+  { version:'v1.0.4', date:'2026-08-19', items:[
+    '修正商品磅數固定顯示 0.25磅的錯誤',
+    '修正重複結單覆蓋歷史紀錄的問題'
+  ]},
   { version:'v1.0.3', date:'2026-07-04', items:[
     '修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤',
     '修正「編輯後新增」烘焙度欄位未正規化導致儲存空值',
@@ -1368,6 +1376,14 @@ function changeQty(id, delta, e){
 // ════════════════════════════════════════
 // PRODUCT DETAIL MODAL
 // ════════════════════════════════════════
+// 判斷品項磅數：Kakalove 0.25磅 的品項會在品名或 URL handle 標示 4oz / 0.25磅，
+// 其餘一律 0.5磅（官網小叮嚀：高單價及數量少的豆子才用 0.25磅袋裝）
+function productSize(p){
+  if(p.size) return p.size;
+  const hay = [p.name_zh, p.name_en, p.url, p.id].filter(Boolean).join(' ').toLowerCase();
+  return /4oz|0\.25\s*磅/.test(hay) ? '0.25磅' : '0.5磅';
+}
+
 function openDetail(id, e){
   if(e) e.stopPropagation();
   const p = PRODUCTS.find(x=>x.id===id);
@@ -1379,7 +1395,7 @@ function openDetail(id, e){
   document.getElementById('pdHero').textContent = p.emoji;
   document.getElementById('pdTitleZh').textContent = p.name_zh;
   document.getElementById('pdTitleEn').textContent = p.name_en;
-  document.getElementById('pdPrice').textContent = `NT$${p.price.toLocaleString()} / 0.25磅`;
+  document.getElementById('pdPrice').textContent = `NT$${p.price.toLocaleString()} / ${productSize(p)}`;
   document.getElementById('pdRoastBadge').innerHTML = `<span class="roast-badge ${rc}">${p.roast}</span>`;
 
   // roast meter
@@ -1563,7 +1579,10 @@ async function finalizeRound(){
   const roundNum=state.round;
   const rec={round:roundNum,date:new Date().toISOString(),note,orders:[...state.orders],grandTotal:grand,shoppingCredit:0,receipt:null};
   try{
-    await db.collection('history').doc(String(roundNum)).set(rec);
+    // 以自動 ID 新增，避免同輪次重複結單覆蓋既有紀錄
+    const dup=await db.collection('history').where('round','==',roundNum).limit(1).get();
+    if(!dup.empty){ toast(`❌ 第 ${roundNum} 輪已有紀錄，請勿重複結單`); return; }
+    await db.collection('history').add(rec);
     const batch=db.batch();
     state.orders.forEach(o=>batch.delete(db.collection('orders').doc(o.name)));
     await batch.commit();

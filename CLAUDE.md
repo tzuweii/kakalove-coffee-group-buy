@@ -197,10 +197,42 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 
 | 版本 | 檔案 | 日期 | 說明 |
 |---|---|---|---|
+| v1.0.4 | index.html | 2026-08-19 | 磅數顯示修正、結單覆蓋 bug fix（見下方詳細） |
 | v1.0.3 | index.html + Worker | 2026-07-04 | 品項同步 bug fix（見下方詳細） |
 | v1.0.2 | index_ios.html | 2026-06-26 | 手機版優化（見下方詳細） |
 | v1.0.1 | index.html | 2026-06-26 | UI 更新（見下方詳細） |
 | v1.0.0 | index.html | 2026-06-24 | First Release（見下方詳細） |
+
+### v1.0.4 — 2026-08-19 · 磅數顯示修正、結單覆蓋 bug fix
+
+#### 磅數顯示修正
+
+`openDetail()` 原本將商品詳情的價格硬編為 `NT$xxx / 0.25磅`，所有品項都顯示 0.25 磅。
+
+新增 `productSize(p)`：優先取 `p.size`，否則檢查品名 / `url` / `id` 是否含 `4oz` 或 `0.25磅`，
+其餘回傳 `0.5磅`（對應官網小叮嚀：「咖啡豆以 0.5 磅袋包裝，高單價及數量少的咖啡豆以 0.25 磅袋裝」）。
+
+以線上實際 44 筆品項驗證：10 筆判為 `0.25磅`、34 筆判為 `0.5磅`，與品名標示相符。
+
+> **設計決策**：曾嘗試在 `DEFAULT_PRODUCTS` 逐筆補 `size` 欄位，但**完全無效**。
+> 正式環境的 `products` 集合早已被官網同步結果整批取代（文件 ID 為 Kakalove handle，
+> 非 `DEFAULT_PRODUCTS` 的短 id），而 `DEFAULT_PRODUCTS` 僅在集合為空時植入。
+> 任何只改 `DEFAULT_PRODUCTS` 的修正都不會影響線上品項。
+
+#### 結單覆蓋 bug fix（造成第一輪團購紀錄遺失）
+
+`finalizeRound()` 原以 `history/{round}` 為文件 ID 呼叫 `.set()`，同輪次重複結單會**靜默覆蓋**既有紀錄。
+
+實際災情：第一輪（2026-06-24，$2,110）結單後 `meta/state.round` 未正確遞增，
+第二輪（2026-08-19，$2,570）沿用輪次 1 再次寫入 `history/1`，第一輪紀錄被覆蓋且無法復原。
+
+修正：
+- 改用 `.add()` 自動生成文件 ID，不再以輪次當 ID
+- 寫入前先 `where('round','==',roundNum).limit(1)` 查重，已存在則中止並提示，不再靜默覆蓋
+- 刪除 / 收據更新既有邏輯已使用 `rec._docId`（來自 `onSnapshot` 的 `d.id`），與自動 ID 相容
+
+事後以 Console 腳本重建第一輪紀錄（依結單截圖，品項單價為估算值、每人總金額正確），
+並修正 `history/1` 的 `round` 欄位為 2、`meta/state.round` 為 3。
 
 ### v1.0.3 — 2026-07-04 · 品項同步 bug fix
 
@@ -254,3 +286,8 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 - Firestore 安全規則為永久開放模式（`allow read, write: if true`，無到期日），適合私人群組，不適合公開使用。
   - **歷史注意**：原本以測試模式建立，規則帶 30 天到期日，2026-07-26 到期後 Firestore 拒絕所有讀寫、全站癱瘓。2026-07-29 於 Firebase Console 改為 `if true`（不帶到期日）修復，日後不會再自動過期。
 - 已手動一鍵新增的品項若 `cat` 填錯，需手動修正（不會自動重新同步覆蓋）
+- 磅數由 `productSize()` 從品名 / URL 推斷，非官網欄位。若 Kakalove 改用其他袋裝規格
+  （如 1 磅）或品名未標示 `0.25磅` / `4oz`，會誤判為 `0.5磅`
+- **修改前務必先 `git fetch`**：本地曾長期落後遠端 11 個提交（v1.0.2 / v1.0.3 都在遠端），
+  差點以舊版覆蓋。線上部署版與 `origin/main` 的 `index.html` 內容一致，
+  必要時可 `curl https://cold-disk-bf47.tzuweichengkor.workers.dev/` 抓回比對
