@@ -2,6 +2,20 @@
 <!--
   Kakalove Cafe 咖啡團購共編工具
   ════════════════════════════════
+  v1.0.4  2026-08-19
+    - 修正商品詳情磅數固定顯示 0.25磅，改依品名 / URL 判斷實際規格
+    - 修正結單以輪次為文件 ID 導致重複結單覆蓋歷史紀錄
+
+  v1.0.3  2026-07-04
+    - 修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤
+    - 修正「編輯後新增」烘焙度欄位未正規化導致儲存空值
+    - 同步清單新增簡介（desc）顯示
+
+  v1.0.2  2026-06-26
+    - 新增手機專用頁面
+    - 底部購物車列（Cart Bar）與抽屜式送出（Drawer）
+    - 支援 iOS Safe Area、防溢出與版面全面優化
+
   v1.0.1  2026-06-26
     - 移除下單頁版本紀錄卡片
     - 新增開頁警告彈出視窗
@@ -21,7 +35,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kakalove Cafe 咖啡團購共編</title>
 <style>
   :root {
@@ -46,7 +60,7 @@
     --r4: #6b2f0f; --r4t: #fff;     /* 深    */
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI','微軟正黑體',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  body{font-family:'Segoe UI','微軟正黑體',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   header{background:var(--brown-dark);color:#fff;padding:20px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
   header .logo{font-size:28px}
@@ -247,6 +261,159 @@
   #tickerWindow{height:140px;overflow:hidden;position:relative;}
   #tickerItems{display:flex;flex-direction:column;gap:6px;will-change:transform;}
   .ticker-item{font-size:10px;color:var(--text-muted);line-height:1.55;overflow-wrap:break-word;}
+
+  /* ═══════════════════════════════════════
+     MOBILE  (iOS optimised)
+  ════════════════════════════════════════ */
+  @media(max-width:720px){
+    /* ── 根源修正：整個文件不允許水平溢出 ── */
+    html{max-width:100vw;overflow-x:hidden;}
+    body{max-width:100vw;overflow-x:hidden;width:100%;}
+    *{box-sizing:border-box;}
+
+    #stickyTop{position:sticky;top:0;z-index:100;}
+    .tab-panel{overflow-x:hidden;max-width:100vw;}
+    .container{padding:12px;max-width:100%;overflow-x:hidden;}
+    .card{width:100%;max-width:100%;overflow:hidden;}
+
+    /* disclaimer <p> 在 flex 容器內需 min-width:0 才不會撐寬父層 */
+    .disclaimer-banner p{min-width:0;flex:1;}
+    /* 彙整表格超出寬度修正 */
+    .summary-table{table-layout:fixed;word-break:break-word;}
+
+    header{padding:10px 14px;gap:10px;}
+    header .logo{font-size:20px;}
+    header h1{font-size:14px;letter-spacing:.2px;}
+    header p{font-size:10px;}
+
+    /* 分頁列：4 個 tab 平均分配寬度，不需水平捲動 */
+    .tabs{padding:0;overflow-x:hidden;flex-wrap:nowrap;}
+    .tab-btn{flex:1;min-width:0;padding:10px 4px;font-size:11px;white-space:nowrap;}
+
+    .disclaimer-banner{padding:6px 12px!important;font-size:11px!important;}
+    .disclaimer-banner a{word-break:break-all;}
+
+    /* order tab 底部留空間給購物車列 */
+    #tab-order .container{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+
+    .order-grid{grid-template-columns:1fr!important;width:100%;}
+    /* grid item 預設 min-width:auto 不會收縮，必須設 0 才不會被內容撐破 */
+    .order-grid > *{min-width:0;max-width:100%;overflow:hidden;}
+    #desktopCartCol{display:none!important;}
+
+    /* 品項列表 */
+    .product-list{max-height:calc(100dvh - 380px);overflow-y:auto;overflow-x:hidden;width:100%;}
+    /* 品項卡片：嚴格限制在父容器內 */
+    .product-item{flex-wrap:wrap;align-items:flex-start;width:100%;min-width:0;max-width:100%;}
+    .product-emoji{flex-shrink:0;}
+    .product-info{min-width:0;flex:1;overflow:hidden;max-width:calc(100% - 62px);}
+    .pi-top{flex-wrap:wrap;}
+    .pi-name{word-break:break-word;overflow-wrap:anywhere;white-space:normal;}
+    .pi-en{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+    .pi-bottom{flex-wrap:wrap;}
+    .product-right{
+      flex-basis:100%;
+      flex-direction:row;
+      justify-content:space-between;
+      align-items:center;
+      padding-top:4px;
+    }
+    .cat-header{max-width:100%;}
+    .filter-chips{flex-wrap:wrap;}
+
+    /* 防止 iOS Safari 自動縮放 */
+    input[type=text],input[type=number],select,textarea{font-size:16px!important;}
+
+    /* 管理員編輯 modal 單欄 */
+    .pe-grid{grid-template-columns:1fr!important;}
+    /* 彙整頁彙總格線單欄 */
+    .agg-grid{grid-template-columns:1fr;}
+
+    /* ── Cart Bar ── */
+    .cart-bar{
+      display:flex;
+      position:fixed;
+      bottom:0;left:0;right:0;
+      background:var(--brown-dark);
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      z-index:140;
+      align-items:center;gap:12px;
+      cursor:pointer;
+      box-shadow:0 -2px 10px rgba(0,0,0,.25);
+    }
+    .cart-bar-info{flex:1;}
+    .cart-bar-count{font-size:11px;color:rgba(255,255,255,.65);}
+    .cart-bar-total{font-size:16px;font-weight:800;color:var(--accent);}
+    .cart-bar-btn{
+      background:var(--accent);color:var(--brown-dark);
+      border:none;border-radius:8px;
+      padding:8px 14px;font-size:13px;font-weight:700;
+      cursor:pointer;white-space:nowrap;flex-shrink:0;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    /* ── Cart Drawer ── */
+    .cart-drawer-overlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.5);
+      z-index:160;opacity:0;pointer-events:none;
+      transition:opacity .25s;
+    }
+    .cart-drawer-overlay.open{opacity:1;pointer-events:all;}
+
+    .cart-drawer{
+      position:fixed;bottom:0;left:0;right:0;
+      background:#fff;border-radius:20px 20px 0 0;
+      z-index:161;
+      transform:translateY(100%);
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      max-height:88vh;
+      display:flex;flex-direction:column;
+      box-shadow:0 -4px 24px rgba(0,0,0,.2);
+    }
+    .cart-drawer.open{transform:translateY(0);}
+
+    .cd-handle{
+      width:36px;height:4px;background:var(--border);
+      border-radius:2px;margin:12px auto 0;flex-shrink:0;
+    }
+    .cd-header{
+      padding:10px 16px 12px;
+      display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--border);flex-shrink:0;
+    }
+    .cd-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px;flex:1;}
+    .cd-footer{
+      padding:12px 16px;flex-shrink:0;
+      border-top:2px solid var(--border);
+      padding-bottom:calc(env(safe-area-inset-bottom) + 12px);
+    }
+
+    /* ── Toast：出現在畫面頂部 ── */
+    #toast{
+      bottom:auto;
+      top:calc(env(safe-area-inset-top) + 68px);
+      left:50%;right:auto;
+      transform:translateX(-50%);
+      white-space:nowrap;
+      max-width:calc(100vw - 32px);
+    }
+
+    /* ── Modals：一般 modal 從底部滑出；警告視窗保持置中 ── */
+    .modal-overlay:not(#warningModal){align-items:flex-end;padding:0;}
+    .modal-overlay:not(#warningModal) .modal{
+      border-radius:20px 20px 0 0;
+      max-height:92vh;
+      width:100%;max-width:100%!important;
+      padding:20px 16px calc(env(safe-area-inset-bottom) + 20px);
+    }
+  }
+
+  /* 桌機版隱藏手機專用元素 */
+  @media(min-width:721px){
+    .cart-bar,.cart-drawer-overlay,.cart-drawer{display:none!important;}
+  }
+  .cart-bar.hidden{display:none!important;}
 </style>
 <!-- Firebase SDK (compat v9) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -254,6 +421,7 @@
 </head>
 <body>
 
+<div id="stickyTop">
 <header>
   <div class="logo">☕</div>
   <div style="flex:1;">
@@ -262,8 +430,8 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:right;">
-      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.1</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-06-26</div>
+      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.4</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-07-04</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);">
       <div id="connDot" style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;transition:background .4s;flex-shrink:0;"></div>
@@ -279,7 +447,7 @@
   <button class="tab-btn" onclick="switchTab('admin',this)">⚙️ 管理員</button>
 </div>
 
-<div style="background:#7b4f2e;border-bottom:1px solid rgba(0,0,0,.15);padding:8px 20px;display:flex;align-items:center;gap:8px;">
+<div class="disclaimer-banner" style="background:#7b4f2e;border-bottom:1px solid rgba(0,0,0,.15);padding:8px 20px;display:flex;align-items:center;gap:8px;">
   <span style="font-size:14px;flex-shrink:0;">⚠️</span>
   <p style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.5;margin:0;">
     本工具品項資料由自動同步產生，<strong style="color:#fff;">品名、規格、價格等資訊僅供參考，實際內容以
@@ -287,6 +455,7 @@
        style="color:#e8a87c;text-decoration:underline;">Kakalove 官網</a> 為準。</strong>
     下單前請自行確認。
   </p>
+</div>
 </div>
 
 <!-- ══ TAB 1 · ORDER ══ -->
@@ -310,7 +479,7 @@
       </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:16px;">
+    <div id="desktopCartCol" style="display:flex;flex-direction:column;gap:16px;">
       <div class="card">
         <div class="card-header"><h2>👤 訂購人資訊</h2></div>
         <div class="card-body">
@@ -632,6 +801,38 @@
 <div class="lightbox" id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src=""></div>
 <div id="toast"></div>
 
+<!-- ══ MOBILE · CART BAR ══ -->
+<div class="cart-bar" id="cartBar" onclick="openCartDrawer()">
+  <div class="cart-bar-info">
+    <div class="cart-bar-count" id="cartBarCount">0 項商品</div>
+    <div class="cart-bar-total" id="cartBarTotal">NT$0</div>
+  </div>
+  <button class="cart-bar-btn">查看購物車 →</button>
+</div>
+
+<!-- ══ MOBILE · CART DRAWER ══ -->
+<div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="closeCartDrawer()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cd-handle"></div>
+  <div class="cd-header">
+    <span id="cartDrawerTitle" style="font-size:15px;font-weight:700;color:var(--brown-dark);">🛒 我的選單</span>
+    <button style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);line-height:1;-webkit-tap-highlight-color:transparent;" onclick="closeCartDrawer()">✕</button>
+  </div>
+  <div class="cd-body">
+    <div class="form-row" style="margin-bottom:14px;">
+      <label>你的名字</label>
+      <input type="text" id="buyerNameDrawer" placeholder="輸入名字…" oninput="syncBuyerName('drawer')">
+    </div>
+    <div id="cartItemsDrawer"><div class="cart-empty">尚未選擇品項</div></div>
+    <div id="cartTotalRowDrawer" style="display:none;" class="cart-total">
+      <span>合計</span><span id="cartTotalDrawer">NT$0</span>
+    </div>
+  </div>
+  <div class="cd-footer">
+    <button class="btn btn-primary btn-full" onclick="submitOrder()">✅ 送出我的訂單</button>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════
 // ROAST LEVELS  (index 0 = 淺 … 4 = 深)
@@ -660,6 +861,20 @@ function normalizeRoast(r){
 const ROAST_CLASS = ['r0','r1','r2','r3','r4'];
 
 const CHANGELOG = [
+  { version:'v1.0.4', date:'2026-08-19', items:[
+    '修正商品磅數固定顯示 0.25磅的錯誤',
+    '修正重複結單覆蓋歷史紀錄的問題'
+  ]},
+  { version:'v1.0.3', date:'2026-07-04', items:[
+    '修正同步功能受促銷頁面影響導致風味 / 烘焙度抓取錯誤',
+    '修正「編輯後新增」烘焙度欄位未正規化導致儲存空值',
+    '同步清單新增簡介顯示'
+  ]},
+  { version:'v1.0.2', date:'2026-06-26', items:[
+    '新增手機專用頁面',
+    '底部購物車列（Cart Bar）與抽屜式送出（Drawer）',
+    '支援 iOS Safe Area、防溢出與版面全面優化'
+  ]},
   { version:'v1.0.1', date:'2026-06-26', items:[
     '移除下單頁版本紀錄卡片',
     '新增開頁警告彈出視窗',
@@ -1058,6 +1273,8 @@ function switchTab(tab, btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(btn) btn.classList.add('active');
+  const cartBar = document.getElementById('cartBar');
+  if(cartBar) cartBar.classList.toggle('hidden', tab !== 'order');
   if(tab==='summary') renderSummary();
   if(tab==='history') renderHistory();
   if(tab==='admin') renderAdminProducts();
@@ -1094,12 +1311,12 @@ function renderProducts(){
   let products = PRODUCTS;
   if(activeCategory !== '全部') products = products.filter(p => p.cat === activeCategory);
   if(q) products = products.filter(p =>
-    p.name_zh.toLowerCase().includes(q) ||
-    p.name_en.toLowerCase().includes(q) ||
-    p.flavors.join('').includes(q) ||
-    p.desc.includes(q) ||
-    p.process.includes(q) ||
-    p.roast.includes(q)
+    (p.name_zh||'').toLowerCase().includes(q) ||
+    (p.name_en||'').toLowerCase().includes(q) ||
+    (p.flavors||[]).join('').includes(q) ||
+    (p.desc||'').includes(q) ||
+    (p.process||'').includes(q) ||
+    (p.roast||'').includes(q)
   );
 
   if(!products.length){ list.innerHTML='<div class="cart-empty">找不到符合的品項</div>'; return; }
@@ -1122,7 +1339,7 @@ function renderProducts(){
     html += groups[cat].map(p=>{
       const qty = cart[p.id] || 0;
       const rc = roastClass(p.roast);
-      const flavorHtml = p.flavors.slice(0,3).map(f=>`<span class="flavor-chip">${f}</span>`).join('');
+      const flavorHtml = (p.flavors||[]).slice(0,3).map(f=>`<span class="flavor-chip">${f}</span>`).join('');
       return `<div class="product-item ${qty>0?'selected':''}" id="pi-${p.id}">
         <div class="product-emoji">${p.emoji}</div>
         <div class="product-info">
@@ -1159,6 +1376,14 @@ function changeQty(id, delta, e){
 // ════════════════════════════════════════
 // PRODUCT DETAIL MODAL
 // ════════════════════════════════════════
+// 判斷品項磅數：Kakalove 0.25磅 的品項會在品名或 URL handle 標示 4oz / 0.25磅，
+// 其餘一律 0.5磅（官網小叮嚀：高單價及數量少的豆子才用 0.25磅袋裝）
+function productSize(p){
+  if(p.size) return p.size;
+  const hay = [p.name_zh, p.name_en, p.url, p.id].filter(Boolean).join(' ').toLowerCase();
+  return /4oz|0\.25\s*磅/.test(hay) ? '0.25磅' : '0.5磅';
+}
+
 function openDetail(id, e){
   if(e) e.stopPropagation();
   const p = PRODUCTS.find(x=>x.id===id);
@@ -1170,7 +1395,7 @@ function openDetail(id, e){
   document.getElementById('pdHero').textContent = p.emoji;
   document.getElementById('pdTitleZh').textContent = p.name_zh;
   document.getElementById('pdTitleEn').textContent = p.name_en;
-  document.getElementById('pdPrice').textContent = `NT$${p.price.toLocaleString()} / 0.25磅`;
+  document.getElementById('pdPrice').textContent = `NT$${p.price.toLocaleString()} / ${productSize(p)}`;
   document.getElementById('pdRoastBadge').innerHTML = `<span class="roast-badge ${rc}">${p.roast}</span>`;
 
   // roast meter
@@ -1207,19 +1432,35 @@ function addFromDetail(){
 function updateCartHeader(){
   const n = document.getElementById('buyerName').value.trim();
   document.getElementById('cartTitle').textContent = n ? `🛒 ${n} 的選單` : '🛒 我的選單';
+  const dt = document.getElementById('cartDrawerTitle');
+  const dn = document.getElementById('buyerNameDrawer');
+  if(dt) dt.textContent = n ? `🛒 ${n} 的選單` : '🛒 我的選單';
+  if(dn && dn.value !== n) dn.value = n;
 }
 
 function renderCart(){
   const el = document.getElementById('cartItems');
   const totalEl = document.getElementById('cartTotal');
   const totalRow = document.getElementById('cartTotalRow');
+  const cartBar = document.getElementById('cartBar');
+  const drawerEl = document.getElementById('cartItemsDrawer');
+  const drawerTotal = document.getElementById('cartTotalDrawer');
+  const drawerTotalRow = document.getElementById('cartTotalRowDrawer');
   const items = Object.entries(cart);
   if(!items.length){
     el.innerHTML='<div class="cart-empty">選擇左側品項加入清單</div>';
-    totalRow.style.display='none'; return;
+    totalRow.style.display='none';
+    if(cartBar){
+      document.getElementById('cartBarCount').textContent='0 項商品';
+      document.getElementById('cartBarTotal').textContent='NT$0';
+    }
+    if(drawerEl) drawerEl.innerHTML='<div class="cart-empty">尚未選擇品項</div>';
+    if(drawerTotalRow) drawerTotalRow.style.display='none';
+    closeCartDrawer();
+    return;
   }
   let total=0;
-  el.innerHTML = items.map(([id,qty])=>{
+  const cartHtml = items.map(([id,qty])=>{
     const p=PRODUCTS.find(x=>x.id===id); if(!p) return '';
     const sub=p.price*qty; total+=sub;
     return `<div class="cart-item">
@@ -1228,14 +1469,27 @@ function renderCart(){
       <button class="ci-remove" onclick="removeItem('${id}')">✕</button>
     </div>`;
   }).join('');
+  el.innerHTML = cartHtml;
   totalEl.textContent=`NT$${total.toLocaleString()}`;
   totalRow.style.display='flex';
+  if(cartBar){
+    const count = items.reduce((s,[,q])=>s+q,0);
+    document.getElementById('cartBarCount').textContent=`${count} 項商品`;
+    document.getElementById('cartBarTotal').textContent=`NT$${total.toLocaleString()}`;
+  }
+  if(drawerEl){
+    drawerEl.innerHTML = cartHtml;
+    if(drawerTotal) drawerTotal.textContent=`NT$${total.toLocaleString()}`;
+    if(drawerTotalRow) drawerTotalRow.style.display='flex';
+  }
 }
 
 function removeItem(id){ delete cart[id]; renderProducts(); renderCart(); }
 function clearCart(){ cart={}; renderProducts(); renderCart(); }
 
 function submitOrder(){
+  const dn = document.getElementById('buyerNameDrawer');
+  if(dn && dn.value.trim()) document.getElementById('buyerName').value = dn.value.trim();
   const name = document.getElementById('buyerName').value.trim();
   if(!name){ toast('請先輸入你的名字！'); return; }
   if(!Object.keys(cart).length){ toast('請至少選擇一個品項！'); return; }
@@ -1252,7 +1506,9 @@ function submitOrder(){
     .then(()=>toast(`✅ ${name} 的訂單${isUpdate?'已更新':'已送出'}！`))
     .catch(err=>toast('❌ 送出失敗：'+err.message));
   clearCart();
-  document.getElementById('buyerName').value=''; updateCartHeader();
+  document.getElementById('buyerName').value='';
+  if(dn) dn.value='';
+  updateCartHeader();
 }
 
 // ════════════════════════════════════════
@@ -1323,7 +1579,10 @@ async function finalizeRound(){
   const roundNum=state.round;
   const rec={round:roundNum,date:new Date().toISOString(),note,orders:[...state.orders],grandTotal:grand,shoppingCredit:0,receipt:null};
   try{
-    await db.collection('history').doc(String(roundNum)).set(rec);
+    // 以自動 ID 新增，避免同輪次重複結單覆蓋既有紀錄
+    const dup=await db.collection('history').where('round','==',roundNum).limit(1).get();
+    if(!dup.empty){ toast(`❌ 第 ${roundNum} 輪已有紀錄，請勿重複結單`); return; }
+    await db.collection('history').add(rec);
     const batch=db.batch();
     state.orders.forEach(o=>batch.delete(db.collection('orders').doc(o.name)));
     await batch.commit();
@@ -1560,6 +1819,26 @@ function deleteProduct(id){
     .catch(err=>toast('❌ 刪除失敗：'+err.message));
 }
 
+function deleteProductFromSync(id, btnEl){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!confirm(`確定要從目錄刪除「${p?.name_zh}」？`)) return;
+  db.collection('products').doc(id).delete()
+    .then(()=>{
+      toast('已刪除品項');
+      btnEl.closest('.sync-item')?.remove();
+      const box = document.getElementById('removedListBox');
+      const remaining = box?.querySelectorAll('.sync-item').length || 0;
+      if(remaining === 0){
+        box?.insertAdjacentHTML('afterend', '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>');
+        box?.remove();
+      } else {
+        const header = document.getElementById('removedListHeader');
+        if(header) header.textContent = `⚠️ 以下 ${remaining} 個品項在官網查無，可能已下架`;
+      }
+    })
+    .catch(err=>toast('❌ 刪除失敗：'+err.message));
+}
+
 // ── Sync tab 切換 ─────────────────────────────────────
 function switchSyncTab(tab){
   const isAuto = tab === 'auto';
@@ -1639,13 +1918,15 @@ function runPasteSync(){
   }
 
   if(removedList.length){
-    html += `<div>
-      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+    html += `<div id="removedListBox">
+      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+      <div id="removedListItems">
       ${removedList.map(p => `
         <div class="sync-item">
           <div style="flex:1;font-size:13px;">${p.name_zh}</div>
-          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">刪除</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProductFromSync('${p.id}', this)">刪除</button>
         </div>`).join('')}
+      </div>
     </div>`;
   } else {
     html += '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>';
@@ -1718,6 +1999,7 @@ async function runSync(){
               ${sp.flavors?.length ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">
                 ${sp.flavors.map(f=>`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text-muted);">${f}</span>`).join('')}
               </div>` : ''}
+              ${sp.desc ? `<div style="margin-top:4px;font-size:11px;color:var(--text-muted);line-height:1.5;">${sp.desc}</div>` : ''}
             </div>
             <button class="btn btn-outline btn-sm" onclick="openProductEditFromSync(${i})">編輯後新增</button>
           </div>`).join('')}
@@ -1726,13 +2008,15 @@ async function runSync(){
       html+='<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">✅ 目前沒有發現新品項</div>';
     }
     if(removedList.length){
-      html+=`<div>
-        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+      html+=`<div id="removedListBox">
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+        <div id="removedListItems">
         ${removedList.map(p=>`
           <div class="sync-item">
             <div style="flex:1;font-size:13px;">${p.name_zh}</div>
-            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">刪除</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteProductFromSync('${p.id}', this)">刪除</button>
           </div>`).join('')}
+        </div>
       </div>`;
     } else {
       html+='<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>';
@@ -1842,7 +2126,7 @@ function openProductEditFromSync(idx){
   document.getElementById('peNameEn').value=sp.title;
   document.getElementById('peCat').value=sp.cat||'非洲';
   document.getElementById('peProcess').value=sp.process||'';
-  document.getElementById('peRoast').value=sp.roast||'淺焙';
+  document.getElementById('peRoast').value=normalizeRoast(sp.roast)||'淺焙';
   document.getElementById('pePrice').value=parseInt(sp.variants?.[0]?.price||0);
   document.getElementById('peEmoji').value=guessEmoji(sp.title, sp.cat, sp.flavors);
   document.getElementById('peTags').value='';
@@ -1864,6 +2148,34 @@ document.querySelectorAll('.modal-overlay:not([data-no-dismiss])').forEach(m=>m.
 let toastTimer;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2800); }
 function updateRoundLabel(){ const l=`第 ${state.round} 輪`; document.getElementById('round-label').textContent=l; document.getElementById('summary-round-label').textContent=l; }
+
+// ════════════════════════════════════════
+// MOBILE CART DRAWER
+// ════════════════════════════════════════
+function openCartDrawer(){
+  const d=document.getElementById('cartDrawer');
+  const o=document.getElementById('cartDrawerOverlay');
+  if(d) d.classList.add('open');
+  if(o) o.classList.add('open');
+  // 如果桌機有填名字，同步到 drawer
+  const desk=document.getElementById('buyerName');
+  const dn=document.getElementById('buyerNameDrawer');
+  if(dn && desk && !dn.value && desk.value) dn.value=desk.value;
+}
+function closeCartDrawer(){
+  const d=document.getElementById('cartDrawer');
+  const o=document.getElementById('cartDrawerOverlay');
+  if(d) d.classList.remove('open');
+  if(o) o.classList.remove('open');
+}
+function syncBuyerName(from){
+  const desk=document.getElementById('buyerName');
+  const drawer=document.getElementById('buyerNameDrawer');
+  if(!desk||!drawer) return;
+  if(from==='drawer') desk.value=drawer.value;
+  else drawer.value=desk.value;
+  updateCartHeader();
+}
 
 initCatalog();
 initVersionTicker();
