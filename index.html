@@ -2,6 +2,14 @@
 <!--
   Kakalove Cafe 咖啡團購共編工具
   ════════════════════════════════
+  v1.0.5  2026-09-02
+    - 同步「疑似下架品」新增一鍵全部刪除
+    - 新增 guessTags()：同步時自動從品名推導標籤（處理法 / 評鑑 / 分級 / 品種 / 低因…）
+    - 移除空集合自動植入 DEFAULT_PRODUCTS 的邏輯（清空時會塞回過期品項）
+    - 新增 CURATED_EMOJI：人工挑選的 emoji 以 handle 記錄，重建目錄後可還原
+    - 品名不再分中英文，卡片改以標籤列取代原英文品名（磅數排第一）
+    - 無標籤時商品詳情不再顯示空白的「標籤」區塊
+
   v1.0.4  2026-08-19
     - 修正商品詳情磅數固定顯示 0.25磅，改依品名 / URL 判斷實際規格
     - 修正結單以輪次為文件 ID 導致重複結單覆蓋歷史紀錄
@@ -116,7 +124,8 @@
   .product-info{flex:1;min-width:0}
   .pi-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
   .pi-name{font-size:13px;font-weight:700;color:var(--brown-dark);line-height:1.3}
-  .pi-en{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+  .pi-tags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:3px 0}
+  .pi-tag{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:var(--accent-light);border:1px solid var(--border);color:var(--brown-mid)}
   .pi-bottom{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
   .flavor-chip{font-size:10px;padding:1px 7px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text-muted)}
 
@@ -197,8 +206,7 @@
 
   /* product detail modal */
   .pd-hero{width:100%;height:120px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:16px;border:1px solid var(--border)}
-  .pd-title-zh{font-size:15px;font-weight:800;color:var(--brown-dark);line-height:1.4;margin-bottom:3px}
-  .pd-title-en{font-size:11px;color:var(--text-muted);margin-bottom:12px}
+  .pd-title-zh{font-size:15px;font-weight:800;color:var(--brown-dark);line-height:1.4;margin-bottom:12px}
   .pd-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
   .pd-price{font-size:20px;font-weight:800;color:var(--brown-mid)}
   .pd-section{margin-bottom:12px}
@@ -309,7 +317,6 @@
     .product-info{min-width:0;flex:1;overflow:hidden;max-width:calc(100% - 62px);}
     .pi-top{flex-wrap:wrap;}
     .pi-name{word-break:break-word;overflow-wrap:anywhere;white-space:normal;}
-    .pi-en{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
     .pi-bottom{flex-wrap:wrap;}
     .product-right{
       flex-basis:100%;
@@ -430,8 +437,8 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:right;">
-      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.4</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-08-19</div>
+      <div style="font-size:13px;font-weight:800;color:#e8a87c;letter-spacing:.5px;">v1.0.5</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);">2026-09-02</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);">
       <div id="connDot" style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;transition:background .4s;flex-shrink:0;"></div>
@@ -546,7 +553,6 @@
   <div class="modal">
     <div class="pd-hero" id="pdHero"></div>
     <div class="pd-title-zh" id="pdTitleZh"></div>
-    <div class="pd-title-en" id="pdTitleEn"></div>
     <div class="pd-row">
       <div class="pd-price" id="pdPrice"></div>
       <div id="pdRoastBadge"></div>
@@ -555,7 +561,7 @@
       <div class="pd-section-title">烘焙度</div>
       <div class="roast-meter" id="pdRoastMeter"></div>
     </div>
-    <div class="pd-section">
+    <div class="pd-section" id="pdTagsSection">
       <div class="pd-section-title">標籤</div>
       <div class="pd-tags" id="pdTags"></div>
     </div>
@@ -655,12 +661,8 @@
     <h2 id="peModalTitle">新增品項</h2>
     <div class="pe-grid">
       <div class="form-row pe-full">
-        <label>品名（中文）</label>
+        <label>品名</label>
         <input type="text" id="peNameZh" placeholder="CR94 衣索比亞 日曬…">
-      </div>
-      <div class="form-row pe-full">
-        <label>品名（英文）</label>
-        <input type="text" id="peNameEn" placeholder="Ethiopia Natural…">
       </div>
       <div class="form-row">
         <label>分類</label>
@@ -861,6 +863,11 @@ function normalizeRoast(r){
 const ROAST_CLASS = ['r0','r1','r2','r3','r4'];
 
 const CHANGELOG = [
+  { version:'v1.0.5', date:'2026-09-02', items:[
+    '同步清單新增「一鍵全部刪除」下架品項',
+    '品項自動帶入標籤，卡片顯示磅數 / 處理法 / 分級等資訊',
+    '品名不再分中英文，改以標籤列呈現'
+  ]},
   { version:'v1.0.4', date:'2026-08-19', items:[
     '修正商品磅數固定顯示 0.25磅的錯誤',
     '修正重複結單覆蓋歷史紀錄的問題'
@@ -1179,14 +1186,12 @@ db.collection('history').orderBy('date','desc').onSnapshot(snap=>{
   _checkReady();
 },err=>console.error('history:',err));
 
-// 品項 listener — 首次空集合時自動植入預設品項
+// 品項 listener
+// 註：原本空集合時會自動植入 DEFAULT_PRODUCTS，已移除。products 集合早已由官網同步結果
+// 接管（doc id 為 Kakalove handle），自動植入不再是「初始化」而是地雷 —— 只要刪到最後一筆，
+// 每個開著頁面的瀏覽器都會把 25 筆過期預設品寫回去，之後同步就會變成新舊混雜。
+// DEFAULT_PRODUCTS 常數保留作為原始品項的參考資料，不再自動寫入。
 db.collection('products').onSnapshot(snap=>{
-  if(snap.empty){
-    const b=db.batch();
-    DEFAULT_PRODUCTS.forEach(p=>b.set(db.collection('products').doc(p.id),p));
-    b.commit();
-    return;
-  }
   const catOrder=['非洲','北/中/南美洲','亞洲','配方豆'];
   PRODUCTS=snap.docs.map(d=>d.data()).sort((a,b)=>{
     const ci=catOrder.indexOf(a.cat)-catOrder.indexOf(b.cat);
@@ -1312,13 +1317,16 @@ function renderProducts(){
   if(activeCategory !== '全部') products = products.filter(p => p.cat === activeCategory);
   if(q) products = products.filter(p =>
     (p.name_zh||'').toLowerCase().includes(q) ||
-    (p.name_en||'').toLowerCase().includes(q) ||
     (p.flavors||[]).join('').includes(q) ||
     (p.desc||'').includes(q) ||
     (p.process||'').includes(q) ||
     (p.roast||'').includes(q)
   );
 
+  if(!PRODUCTS.length){
+    list.innerHTML='<div class="cart-empty">目錄目前沒有任何品項，請至「管理員」分頁執行「從 Kakalove 同步」。</div>';
+    return;
+  }
   if(!products.length){ list.innerHTML='<div class="cart-empty">找不到符合的品項</div>'; return; }
 
   // group by category, then sort each group by roast asc
@@ -1340,15 +1348,21 @@ function renderProducts(){
       const qty = cart[p.id] || 0;
       const rc = roastClass(p.roast);
       const flavorHtml = (p.flavors||[]).slice(0,3).map(f=>`<span class="flavor-chip">${f}</span>`).join('');
+      // 標籤列（原本英文品名的位置）：磅數排第一，其後接 tags（含處理法）。
+      // 磅數不存進 Firestore，改由 productSize() 即時推導，品名一改就跟著對，不必重新同步。
+      // 掛耳 / 禮盒不是秤重賣的，productSize 會誤判為 0.5磅，這類品項不顯示磅數。
+      const byWeight = !(p.tags||[]).some(t=>t==='掛耳'||t==='禮盒');
+      const tagHtml = [...new Set([...(byWeight?[productSize(p)]:[]), ...(p.tags||[])])]
+        .slice(0,5)
+        .map(t=>`<span class="pi-tag">${t}</span>`).join('');
       return `<div class="product-item ${qty>0?'selected':''}" id="pi-${p.id}">
         <div class="product-emoji">${p.emoji}</div>
         <div class="product-info">
           <div class="pi-top">
             <span class="roast-badge ${rc}">${p.roast}</span>
-            <span style="font-size:10px;color:var(--text-muted);">${p.process}</span>
           </div>
           <div class="pi-name">${p.name_zh}</div>
-          <div class="pi-en">${p.name_en}</div>
+          ${tagHtml ? `<div class="pi-tags">${tagHtml}</div>` : ''}
           <div class="pi-bottom">${flavorHtml}</div>
         </div>
         <div class="product-right">
@@ -1380,7 +1394,7 @@ function changeQty(id, delta, e){
 // 其餘一律 0.5磅（官網小叮嚀：高單價及數量少的豆子才用 0.25磅袋裝）
 function productSize(p){
   if(p.size) return p.size;
-  const hay = [p.name_zh, p.name_en, p.url, p.id].filter(Boolean).join(' ').toLowerCase();
+  const hay = [p.name_zh, p.url, p.id].filter(Boolean).join(' ').toLowerCase();
   return /4oz|0\.25\s*磅/.test(hay) ? '0.25磅' : '0.5磅';
 }
 
@@ -1394,7 +1408,6 @@ function openDetail(id, e){
 
   document.getElementById('pdHero').textContent = p.emoji;
   document.getElementById('pdTitleZh').textContent = p.name_zh;
-  document.getElementById('pdTitleEn').textContent = p.name_en;
   document.getElementById('pdPrice').textContent = `NT$${p.price.toLocaleString()} / ${productSize(p)}`;
   document.getElementById('pdRoastBadge').innerHTML = `<span class="roast-badge ${rc}">${p.roast}</span>`;
 
@@ -1403,10 +1416,11 @@ function openDetail(id, e){
     ROAST_ORDER.map((r,i)=>`<div class="roast-dot ${i<=ri?'on':''}" title="${r}"></div>`).join('') +
     `<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">${p.roast}</span>`;
 
+  // 無標籤時整個區塊隱藏，避免只留一個「標籤」標題的空白區
+  const tagList = p.tags || [];
+  document.getElementById('pdTagsSection').style.display = tagList.length ? '' : 'none';
   document.getElementById('pdTags').innerHTML =
-    p.tags.length
-      ? p.tags.map(t=>`<span class="pd-tag">${t}</span>`).join('')
-      : '';
+    tagList.map(t=>`<span class="pd-tag">${t}</span>`).join('');
   document.getElementById('pdFlavors').innerHTML =
     p.flavors.map(f=>`<span class="flavor-tag">${f}</span>`).join('');
   document.getElementById('pdDesc').textContent = p.desc;
@@ -1742,6 +1756,7 @@ async function saveReceipt(){
 // ════════════════════════════════════════
 let _editingId = null;
 let _syncNewList = [];
+let _syncRemovedList = [];
 
 function renderAdminProducts(){
   const tbody = document.getElementById('adminProductTbody');
@@ -1773,7 +1788,6 @@ function openProductEdit(id){
   document.getElementById('peId').value = p?.id||'';
   document.getElementById('peId').disabled = !!id;
   document.getElementById('peNameZh').value = p?.name_zh||'';
-  document.getElementById('peNameEn').value = p?.name_en||'';
   document.getElementById('peCat').value = p?.cat||'非洲';
   document.getElementById('peProcess').value = p?.process||'';
   document.getElementById('peRoast').value = p?.roast||'淺焙';
@@ -1790,12 +1804,11 @@ async function saveProduct(){
   const id = _editingId || document.getElementById('peId').value.trim();
   if(!id){ toast('請輸入品項 ID'); return; }
   const name_zh = document.getElementById('peNameZh').value.trim();
-  if(!name_zh){ toast('請輸入中文品名'); return; }
+  if(!name_zh){ toast('請輸入品名'); return; }
   const price = parseInt(document.getElementById('pePrice').value)||0;
   if(!price){ toast('請輸入售價'); return; }
   const p = {
     id, name_zh,
-    name_en: document.getElementById('peNameEn').value.trim(),
     cat: document.getElementById('peCat').value,
     process: document.getElementById('peProcess').value.trim(),
     roast: document.getElementById('peRoast').value,
@@ -1825,18 +1838,65 @@ function deleteProductFromSync(id, btnEl){
   db.collection('products').doc(id).delete()
     .then(()=>{
       toast('已刪除品項');
+      _syncRemovedList = _syncRemovedList.filter(x=>x.id!==id);
       btnEl.closest('.sync-item')?.remove();
-      const box = document.getElementById('removedListBox');
-      const remaining = box?.querySelectorAll('.sync-item').length || 0;
-      if(remaining === 0){
-        box?.insertAdjacentHTML('afterend', '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>');
-        box?.remove();
-      } else {
-        const header = document.getElementById('removedListHeader');
-        if(header) header.textContent = `⚠️ 以下 ${remaining} 個品項在官網查無，可能已下架`;
-      }
+      refreshRemovedListUI();
     })
     .catch(err=>toast('❌ 刪除失敗：'+err.message));
+}
+
+// 刪除後重繪「查無品項」區塊：全數清空則收起整個區塊，否則更新標題數量
+function refreshRemovedListUI(){
+  const box = document.getElementById('removedListBox');
+  const remaining = box?.querySelectorAll('.sync-item').length || 0;
+  if(remaining === 0){
+    box?.insertAdjacentHTML('afterend', '<div style="font-size:13px;color:var(--text-muted);">✅ 現有品項皆可在官網找到</div>');
+    box?.remove();
+  } else {
+    const header = document.getElementById('removedListHeader');
+    if(header) header.textContent = `⚠️ 以下 ${remaining} 個品項在官網查無，可能已下架`;
+  }
+}
+
+async function bulkDeleteFromSync(){
+  if(!_syncRemovedList.length) return;
+  const names = _syncRemovedList.slice(0,10).map(p=>'・'+p.name_zh).join('\n')
+    + (_syncRemovedList.length>10 ? `\n…等共 ${_syncRemovedList.length} 個` : '');
+  if(!confirm(`確定要一鍵刪除以下 ${_syncRemovedList.length} 個在官網查無的品項？\n\n${names}\n\n⚠️ 刪除後無法復原，已送出的訂單不受影響。`)) return;
+
+  const box = document.getElementById('removedListBox');
+  box?.insertAdjacentHTML('afterbegin','<div id="bulkDeleteProgress" style="font-size:13px;color:var(--text-muted);padding:8px 0;">刪除中…</div>');
+  const progressEl = document.getElementById('bulkDeleteProgress');
+  const bulkBtn = box?.querySelector('.bulk-del-btn');
+  if(bulkBtn) bulkBtn.disabled = true;
+
+  const targets = _syncRemovedList.slice();
+  try{
+    // Firestore batch 一次最多 500 筆，分批處理
+    const BATCH_SIZE = 400;
+    let deleted = 0;
+    for(let i=0; i<targets.length; i+=BATCH_SIZE){
+      const chunk = targets.slice(i, i+BATCH_SIZE);
+      const batch = db.batch();
+      for(const p of chunk){
+        batch.delete(db.collection('products').doc(p.id));
+        deleted++;
+      }
+      await batch.commit();
+      if(progressEl) progressEl.textContent = `刪除中… ${deleted}/${targets.length}`;
+    }
+    _syncRemovedList = [];
+    document.getElementById('removedListItems')?.replaceChildren();
+    if(progressEl) progressEl.innerHTML =
+      `<span style="color:var(--success);font-weight:700;">✅ 已刪除 ${deleted} 個下架品項</span>`;
+    const header = document.getElementById('removedListHeader');
+    if(header) header.textContent = '⚠️ 已下架品項清單';
+    bulkBtn?.remove();
+  }catch(err){
+    if(progressEl) progressEl.innerHTML =
+      `<span style="color:var(--danger);">❌ 刪除失敗：${err.message}</span>`;
+    if(bulkBtn) bulkBtn.disabled = false;
+  }
 }
 
 // ── Sync tab 切換 ─────────────────────────────────────
@@ -1894,6 +1954,7 @@ function runPasteSync(){
     const m = p.url.match(/\/products\/([^?#/]+)/);
     return m && !shopifyHandles.has(m[1]);
   });
+  _syncRemovedList = removedList;
 
   statusEl.textContent = '';
   resultsEl.style.display = 'block';
@@ -1919,7 +1980,10 @@ function runPasteSync(){
 
   if(removedList.length){
     html += `<div id="removedListBox">
-      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:800;color:var(--danger);" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+        <button class="btn btn-danger btn-sm bulk-del-btn" onclick="bulkDeleteFromSync()">🗑 一鍵全部刪除</button>
+      </div>
       <div id="removedListItems">
       ${removedList.map(p => `
         <div class="sync-item">
@@ -1938,6 +2002,7 @@ function runPasteSync(){
 
 function openSyncModal(){
   _syncNewList=[];
+  _syncRemovedList=[];
   // 自動同步面板重置
   document.getElementById('syncStatus').style.display='block';
   document.getElementById('syncStatus').textContent='點擊「開始同步」抓取 Kakalove 官網資料';
@@ -1977,6 +2042,7 @@ async function runSync(){
       const m=p.url.match(/\/products\/([^?#/]+)/);
       return m && !shopifyHandles.has(m[1]);
     });
+    _syncRemovedList=removedList;
 
     statusEl.style.display='none';
     const resultsEl=document.getElementById('syncResults');
@@ -2009,7 +2075,10 @@ async function runSync(){
     }
     if(removedList.length){
       html+=`<div id="removedListBox">
-        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:800;color:var(--danger);" id="removedListHeader">⚠️ 以下 ${removedList.length} 個品項在官網查無，可能已下架</div>
+          <button class="btn btn-danger btn-sm bulk-del-btn" onclick="bulkDeleteFromSync()">🗑 一鍵全部刪除</button>
+        </div>
         <div id="removedListItems">
         ${removedList.map(p=>`
           <div class="sync-item">
@@ -2027,6 +2096,19 @@ async function runSync(){
     btn.disabled=false;
   }
 }
+
+// ── 人工挑選的 emoji（handle → emoji）─────────────────────
+// guessEmoji 是品名 hash，語意上不一定貼切。這些是人工挑過的，
+// 清空重建目錄後仍要還原，因此以官網 handle 為 key 記錄下來。
+const CURATED_EMOJI = {
+  'cr93-black-meow-blend-espresso-review':                    '🐱',
+  'cr93-golden-parrot-blend-espresso-review':                 '🦜',
+  'hip-hop-blend-1':                                          '🎵',
+  'cr94-marshmallow-blend-espresso-review':                   '☁️',
+  'true-love-blend-1':                                        '❤️',
+  'cr93-colombia-sugarcane-decaf-natural-caldas-villa-clara-caturra': '🌙',
+  'alishan-competition-first-runner-up-taiwan-natural-alishan-lalauya-zou-zhu-yuan-songna-4oz': '🏆',
+};
 
 // ── 根據品名 / 產區猜測 emoji ─────────────────────────────
 function guessEmoji(title, cat, flavors) {
@@ -2071,6 +2153,46 @@ function guessEmoji(title, cat, flavors) {
   return pool[hash % pool.length];
 }
 
+// ── 從品名推導標籤 ─────────────────────────────────────
+// 官網列表頁與詳情頁都沒有可對映 tags 的欄位，只能從品名解析。
+// push 的順序即詳情頁膠囊的顯示順序：處理法 → 評鑑 → 賽事 → 分級 → 品種 → 其他
+function guessTags(title, cat, process){
+  const t = title || '';
+  const out = [];
+  // 括號 / 斜線 / 連字號換成空白並前後補空白，供分級做「整詞」比對，避免 AA 誤中其他字串
+  const padded = ' ' + t.replace(/[()\[\]\/,-]/g, ' ') + ' ';
+
+  // 處理法：優先取品名中的細分寫法（厭氧日曬、酵素水洗…），抓不到才退回 Worker 的 process
+  const PROC = ['厭氧日曬','酵母日曬','酒香日曬','蘭姆桶發酵','厭氧','蜜處理','濕刨','酵素水洗','日曬','水洗'];
+  const proc = PROC.find(p=>t.includes(p)) || process;
+  if(proc) out.push(proc);
+
+  const cr = t.match(/CR9\d/i);
+  if(cr) out.push(cr[0].toUpperCase());
+  if(/Espresso Review/i.test(t)) out.push('Espresso Review');
+  if(/頭等獎|冠軍|首獎/.test(t))  out.push('賽事得獎');
+
+  const GRADE = ['AA TOP','AA等級','SHB','SHG','G1','G2','AA'];
+  const grade = GRADE.find(g=>padded.includes(' '+g+' '));
+  if(grade) out.push(grade);
+
+  // 低因排在品種之前 —— 對消費者而言「這支是低咖啡因」比品種名重要，
+  // 卡片標籤有數量上限，重要的資訊要先卡到位置
+  if(/低因|去咖啡因|decaf|EA甘蔗/i.test(t)) out.push('低因');
+
+  // 瑰夏與藝伎為同一品種的不同譯名，統一標為「藝伎」
+  const VAR = [['藝伎','藝伎'],['瑰夏','藝伎'],['波旁','波旁'],['Sidra','Sidra'],['維拉沙奇','維拉沙奇'],
+               ['鐵比卡','鐵比卡'],['卡杜拉','卡杜拉'],['卡杜艾','卡杜艾'],['SL28','SL28'],['SL34','SL34'],
+               ['卡斯提優','卡斯提優'],['帕卡瑪拉','帕卡瑪拉']];
+  for(const [kw,tag] of VAR) if(t.includes(kw)) out.push(tag);
+
+  if(/配方|blend/i.test(t) || cat==='配方豆') out.push('配方');
+  if(/掛耳|濾掛/.test(t)) out.push('掛耳');
+  if(/禮盒/.test(t))      out.push('禮盒');
+
+  return [...new Set(out)];
+}
+
 async function bulkAddFromSync(){
   if(!_syncNewList.length) return;
   if(!confirm(`確定要一鍵新增 ${_syncNewList.length} 個品項？\n（品名、價格、URL 從官網帶入，其餘欄位為預設值，之後可在管理員介面逐一編輯）`)) return;
@@ -2086,16 +2208,19 @@ async function bulkAddFromSync(){
       const chunk=_syncNewList.slice(i,i+BATCH_SIZE);
       const batch=db.batch();
       for(const sp of chunk){
+        // batch.set 為整份覆寫。emoji 與 tags 官網抓不到、只能人工維護或推導，
+        // 若同 id 品項已存在（例如 url 欄位異動導致沒被比對到），一律沿用既有值，
+        // 既有值為空才用推導結果填補。
+        const exist = PRODUCTS.find(x=>x.id===sp.handle);
         const p={
           id:       sp.handle,
           name_zh:  sp.title,
-          name_en:  sp.title,
           cat:      sp.cat || '未分類',
           process:  sp.process || '',
           roast:    normalizeRoast(sp.roast) || '淺焙',
           price:    parseInt(sp.variants[0]?.price||0),
-          emoji:    guessEmoji(sp.title, sp.cat, sp.flavors),
-          tags:     [],
+          emoji:    exist?.emoji || CURATED_EMOJI[sp.handle] || guessEmoji(sp.title, sp.cat, sp.flavors),
+          tags:     exist?.tags?.length ? exist.tags : guessTags(sp.title, sp.cat, sp.process),
           flavors:  sp.flavors  || [],
           desc:     sp.desc     || '',
           url:      sp.url || ('https://www.kakalovecafe.com.tw/products/'+sp.handle),
@@ -2123,13 +2248,14 @@ function openProductEditFromSync(idx){
   document.getElementById('peId').value=sp.handle;
   document.getElementById('peId').disabled=false;
   document.getElementById('peNameZh').value=sp.title;
-  document.getElementById('peNameEn').value=sp.title;
   document.getElementById('peCat').value=sp.cat||'非洲';
   document.getElementById('peProcess').value=sp.process||'';
   document.getElementById('peRoast').value=normalizeRoast(sp.roast)||'淺焙';
   document.getElementById('pePrice').value=parseInt(sp.variants?.[0]?.price||0);
-  document.getElementById('peEmoji').value=guessEmoji(sp.title, sp.cat, sp.flavors);
-  document.getElementById('peTags').value='';
+  // 同 bulkAddFromSync：已存在的品項沿用人工維護的 emoji / tags，不用推斷值蓋掉
+  const exist=PRODUCTS.find(x=>x.id===sp.handle);
+  document.getElementById('peEmoji').value=exist?.emoji||CURATED_EMOJI[sp.handle]||guessEmoji(sp.title, sp.cat, sp.flavors);
+  document.getElementById('peTags').value=(exist?.tags?.length ? exist.tags : guessTags(sp.title, sp.cat, sp.process)).join(', ');
   document.getElementById('peFlavors').value=(sp.flavors||[]).join(', ');
   document.getElementById('peDesc').value=sp.desc||'';
   document.getElementById('peUrl').value=sp.url||('https://www.kakalovecafe.com.tw/products/'+sp.handle);

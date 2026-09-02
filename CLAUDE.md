@@ -30,7 +30,7 @@
 meta/state           → { round: number }            當前輪次
 orders/{name}        → { name, items, total, time }  當輪每人訂單（一人一文件）
 history/{round}      → { round, date, note, orders, grandTotal, shoppingCredit, receipt }
-products/{id}        → 品項資料（首次載入自動從 DEFAULT_PRODUCTS 植入）
+products/{id}        → 品項資料（doc id 為 Kakalove handle，由品項同步寫入）
 ```
 
 ### Firestore 安全規則
@@ -62,7 +62,7 @@ let state = { round: 1, orders: [], history: [] };
 db.doc('meta/state').onSnapshot(...)       // 輪次
 db.collection('orders').onSnapshot(...)    // 當輪訂單
 db.collection('history').orderBy('date','desc').onSnapshot(...)
-db.collection('products').onSnapshot(...)  // 品項（含自動植入邏輯）
+db.collection('products').onSnapshot(...)  // 品項
 ```
 
 `save()` 為 no-op，所有寫入直接呼叫 Firestore。
@@ -70,7 +70,8 @@ db.collection('products').onSnapshot(...)  // 品項（含自動植入邏輯）
 ## 品項資料
 
 - `DEFAULT_PRODUCTS`：hardcode 的預設品項陣列（25 個，含非洲 / 北中南美洲 / 亞洲 / 配方豆）
-- `let PRODUCTS = []`：從 Firestore 讀取，首次空集合時自動植入 DEFAULT_PRODUCTS
+- `let PRODUCTS = []`：從 Firestore 讀取。**空集合時不再自動植入 `DEFAULT_PRODUCTS`**
+  （原邏輯已移除，見「已知限制」），畫面改為提示執行同步
 - 分類名稱（`cat` 欄位）：`非洲` / `北/中/南美洲` / `亞洲` / `配方豆`（v1.0.0 修正，原為 `美洲` / `亞太`）
 
 ## 品項同步功能
@@ -132,7 +133,8 @@ Worker 抓取時自動帶入 `cat` 欄位，確保同步後品項直接出現在
 - 對四個分類頁依序抓取，每個分類自動處理分頁（`?page=N`，最多 20 頁）
 - 跨分類重複品項以 `handle` 去重
 - 回傳格式：`{ products: [{ handle, title, cat, url, variants:[{price}], tags:'', body_html:'' }] }`
-- **注意**：`tags` 與 `body_html` 無法從列表頁取得，同步後需在管理員介面手動補齊
+- **注意**：`tags` 與 `body_html` 官網沒有對應欄位。`tags` 改由 index.html 的 `guessTags()`
+  從品名推導（v1.0.5），`body_html` 仍為空
 
 ### index.html 同步 UI
 
@@ -197,11 +199,94 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 
 | 版本 | 檔案 | 日期 | 說明 |
 |---|---|---|---|
+| v1.0.5 | index.html | 2026-09-02 | 一鍵刪除下架品、標籤自動推導、移除自動植入（見下方詳細） |
 | v1.0.4 | index.html | 2026-08-19 | 磅數顯示修正、結單覆蓋 bug fix（見下方詳細） |
 | v1.0.3 | index.html + Worker | 2026-07-04 | 品項同步 bug fix（見下方詳細） |
 | v1.0.2 | index_ios.html | 2026-06-26 | 手機版優化（見下方詳細） |
 | v1.0.1 | index.html | 2026-06-26 | UI 更新（見下方詳細） |
 | v1.0.0 | index.html | 2026-06-24 | First Release（見下方詳細） |
+
+### v1.0.5 — 2026-09-02 · 一鍵刪除下架品、標籤自動推導、移除自動植入
+
+#### 同步「一鍵全部刪除」
+
+原本下架品只能逐筆確認刪除（設計上刻意保守）。但咖啡是農產品、品項汰換快，
+改為在「查無品項」區塊加上一鍵全部刪除，沿用新增路徑的 batch write（每批 400 筆）。
+`_syncRemovedList` 記錄當次比對結果，逐筆與批次刪除共用 `refreshRemovedListUI()`。
+
+#### `guessTags()` — 從品名推導標籤
+
+官網列表頁與詳情頁都沒有可對映 `tags` 的欄位，改由品名解析。
+push 順序即卡片標籤的顯示順序：**處理法 → 評鑑（CR9x / Espresso Review）→ 賽事得獎
+→ 分級（G1 / AA TOP / SHB）→ 低因 → 品種 → 配方 / 掛耳 / 禮盒**。
+
+- 處理法優先取品名中的細分寫法（`厭氧日曬`、`酵素水洗`、`蘭姆桶發酵`…），抓不到才退回 Worker 的 `process`
+- 分級用「前後補空白」的整詞比對，避免 `AA` 誤中其他字串
+- 瑰夏與藝伎統一標為「藝伎」
+- **「低因」刻意排在品種之前** —— 卡片標籤有數量上限，對消費者而言低咖啡因比品種名重要
+
+以線上 38 筆實測：38/38 都推得出標籤，平均 2.2 個。
+
+#### 移除空集合自動植入 DEFAULT_PRODUCTS
+
+> **這是一個地雷，不是初始化功能。**
+
+`products` 集合早已由官網同步結果接管（doc id 為 handle），`DEFAULT_PRODUCTS` 的植入邏輯
+平常不生效，但**只要目錄被刪到最後一筆，每個開著頁面的瀏覽器都會把 25 筆過期預設品寫回去**。
+清空重建時會變成新舊混雜（實測會從 38 筆變成 63 筆並產生新的重複）。
+
+已移除 `if(snap.empty){...}` 區塊，`DEFAULT_PRODUCTS` 常數保留作為原始品項的參考資料。
+目錄為空時，下單頁改顯示「請至管理員分頁執行同步」。
+
+#### `CURATED_EMOJI` — 人工 emoji 以 handle 記錄
+
+`guessEmoji` 是品名 hash，語意上不一定貼切，人工挑過的 emoji 在清空重建後會遺失。
+新增 `CURATED_EMOJI`（handle → emoji）記錄 7 個人工挑選的值，
+查找順序為 **既有值 → CURATED_EMOJI → guessEmoji**，重建後可完整還原。
+
+同時修正 `bulkAddFromSync` 的覆寫問題：`batch.set()` 是整份覆寫，
+若同 id 品項已存在（例如 `url` 欄位異動導致沒被比對到），人工的 `emoji` / `tags` 會被推斷值蓋掉。
+現在一律先查 `PRODUCTS` 沿用既有值，既有值為空才用推導結果填補。
+
+#### 品名不再分中英文
+
+Shopline 產品卡只有一個中文品名，同步時 `name_zh` / `name_en` 被填入同一個值，
+卡片與詳情 modal 都把同一行字印兩次。移除 `name_en` 的所有顯示與寫入
+（管理員表單、卡片、詳情 modal、搜尋、`productSize` 的 hay）。
+
+> **設計決策**：欄位 key 保留 `name_zh` 不改名為 `name`。key 使用者看不到，
+> 為此遷移 38 筆線上文件、改 19 處程式碼、還要承擔遷移空窗期品名空白的風險，換不到功能。
+> 現有文件的 `name_en` 成為沒人讀的殘留欄位，不影響運作。
+
+#### 卡片標籤列（取代原英文品名的位置）
+
+```
+烘焙度徽章
+品名
+[磅數] [處理法] [評鑑] [分級] [品種]    ← 米色標籤（新）
+風味 chip                              ← 白底 chip
+```
+
+- **磅數排第一，且不存進 Firestore** —— 由既有的 `productSize()` 即時推導，
+  品名一改就跟著對，不必重新同步
+- 掛耳 / 禮盒不是秤重賣的，`productSize()` 會誤判為 0.5磅，這類品項不顯示磅數
+- 上限 5 個（原為 4 個時會把低因豆的「低因」切掉，卻保留品種名）
+- `pi-top` 原本的灰色處理法小字已移除，否則「水洗」會在同一張卡片出現兩次
+- 無標籤時商品詳情的「標籤」區塊整塊隱藏，不再留一個有標題沒內容的空白區
+
+目標是讓消費者只看標籤列與風味 chip 就能掌握份量、處理法、評鑑、分級、品種、是否低因與風味。
+
+#### 目錄重建（一次性作業）
+
+線上原有 44 筆文件其實只對應 37 個商品 —— 有 7 支咖啡同時存在「原始手工版（短 id）」與
+「官網同步版（handle id）」兩份文件，下單頁各出現兩次；另有 9 筆已從官網下架。
+
+以 `rebuild-products.js` 兩段式重建：先刪除 43 筆並**保留一筆錨點**（`hip-hop-blend-1`），
+讓集合永不為空 —— 因為無法確保其他人的裝置都重新整理過，舊版頁面一遇到空集合就會植入
+`DEFAULT_PRODUCTS`。同步新增後再刪掉錨點、二次同步補回。
+
+結果：38 筆、doc id 統一為 handle、零重複、標籤全數就位、7 個人工 emoji 全部還原。
+訂單與歷史不受影響（`submitOrder` 送出時已快照品名與單價）。
 
 ### v1.0.4 — 2026-08-19 · 磅數顯示修正、結單覆蓋 bug fix
 
@@ -281,7 +366,8 @@ body { max-width: 100vw; overflow-x: hidden; width: 100%; }
 ## 已知限制
 
 - 收據圖片超過 700KB 會被擋，需先壓縮
-- 同步後的品項 `tags`、`body_html`、`flavors`、`desc` 均為空，需手動在管理員介面補齊
+- 同步後的品項 `body_html` 為空。`flavors` / `desc` 自 v1.0.3 起可從詳情頁抓到，
+  `tags` 自 v1.0.5 起由 `guessTags()` 從品名推導，均不需手動補齊
 - 管理員分頁無身份驗證，任何拿到網址的人都能編輯品項
 - Firestore 安全規則為永久開放模式（`allow read, write: if true`，無到期日），適合私人群組，不適合公開使用。
   - **歷史注意**：原本以測試模式建立，規則帶 30 天到期日，2026-07-26 到期後 Firestore 拒絕所有讀寫、全站癱瘓。2026-07-29 於 Firebase Console 改為 `if true`（不帶到期日）修復，日後不會再自動過期。
